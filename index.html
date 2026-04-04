@@ -1174,7 +1174,7 @@
 const SUPABASE_URL = 'https://cdrqimhigiylmcusdcqk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkcnFpbWhpZ2l5bG1jdXNkY3FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyOTgsImV4cCI6MjA5MDg3NjI5OH0.m87Ldgdjpw5jwo7OndJUFa7e18rw3NonW3Bg_eEmdPI';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ========== STATE ==========
 let currentCoach = null;
@@ -1200,19 +1200,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ========== DATA LOADING ==========
 async function loadCoaches() {
-    const { data } = await supabase.from('coaches').select('*').order('id');
+    const { data } = await sb.from('coaches').select('*').order('id');
     allCoaches = data || [];
 }
 
 async function loadAllData() {
     const [playersRes, scoresRes, roundsRes, ladderRes, tradesRes, tradePlayers, messagesRes] = await Promise.all([
-        supabase.from('players').select('*').order('name'),
-        supabase.from('scores').select('*'),
-        supabase.from('rounds').select('*').order('round_number'),
-        supabase.from('ladder').select('*').order('rank'),
-        supabase.from('trades').select('*').order('created_at', { ascending: false }),
-        supabase.from('trade_players').select('*, players(name, afl_team)'),
-        supabase.from('messages').select('*').order('created_at', { ascending: true }).limit(200)
+        sb.from('players').select('*').order('name'),
+        sb.from('scores').select('*'),
+        sb.from('rounds').select('*').order('round_number'),
+        sb.from('ladder').select('*').order('rank'),
+        sb.from('trades').select('*').order('created_at', { ascending: false }),
+        sb.from('trade_players').select('*, players(name, afl_team)'),
+        sb.from('messages').select('*').order('created_at', { ascending: true }).limit(200)
     ]);
 
     allPlayers = playersRes.data || [];
@@ -1678,7 +1678,7 @@ async function sendMessage() {
     if (!text) return;
 
     input.value = '';
-    await supabase.from('messages').insert({
+    await sb.from('messages').insert({
         coach_id: currentCoach.id,
         content: text,
         message_type: 'chat'
@@ -1816,7 +1816,7 @@ async function submitTrade() {
     const message = document.getElementById('tradeMessage').value.trim();
 
     // Create trade
-    const { data: trade, error } = await supabase.from('trades').insert({
+    const { data: trade, error } = await sb.from('trades').insert({
         proposer_id: currentCoach.id,
         target_id: targetId,
         status: 'pending',
@@ -1831,11 +1831,11 @@ async function submitTrade() {
         ...theirChecked.map(pid => ({ trade_id: trade.id, player_id: pid, direction: 'incoming' }))
     ];
 
-    await supabase.from('trade_players').insert(tradePlayers);
+    await sb.from('trade_players').insert(tradePlayers);
 
     // Send system message
     const target = allCoaches.find(c => c.id === targetId);
-    await supabase.from('messages').insert({
+    await sb.from('messages').insert({
         coach_id: currentCoach.id,
         content: `${currentCoach.name} proposed a trade with ${target.name}!`,
         message_type: 'system'
@@ -1847,7 +1847,7 @@ async function submitTrade() {
 }
 
 async function respondTrade(tradeId, status) {
-    await supabase.from('trades').update({
+    await sb.from('trades').update({
         status,
         resolved_at: new Date().toISOString()
     }).eq('id', tradeId);
@@ -1856,16 +1856,16 @@ async function respondTrade(tradeId, status) {
     if (trade && status === 'accepted') {
         // Swap players
         for (const tp of trade.outgoing) {
-            await supabase.from('players').update({ coach_id: trade.target_id }).eq('id', tp.player_id);
+            await sb.from('players').update({ coach_id: trade.target_id }).eq('id', tp.player_id);
         }
         for (const tp of trade.incoming) {
-            await supabase.from('players').update({ coach_id: trade.proposer_id }).eq('id', tp.player_id);
+            await sb.from('players').update({ coach_id: trade.proposer_id }).eq('id', tp.player_id);
         }
     }
 
     const proposer = allCoaches.find(c => c.id === trade.proposer_id);
     const target = allCoaches.find(c => c.id === trade.target_id);
-    await supabase.from('messages').insert({
+    await sb.from('messages').insert({
         coach_id: currentCoach.id,
         content: `${target.name} ${status} the trade with ${proposer.name}!`,
         message_type: 'system'
@@ -1967,7 +1967,7 @@ function renderStats() {
 // ========== REALTIME ==========
 function setupRealtime() {
     // Listen for new chat messages
-    supabase.channel('messages')
+    sb.channel('messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
             const msg = payload.new;
             allMessages.push(msg);
@@ -1983,7 +1983,7 @@ function setupRealtime() {
         .subscribe();
 
     // Listen for trade updates
-    supabase.channel('trades')
+    sb.channel('trades')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, async () => {
             await loadAllData();
             renderTrades();
@@ -1991,7 +1991,7 @@ function setupRealtime() {
         .subscribe();
 
     // Listen for score updates
-    supabase.channel('scores')
+    sb.channel('scores')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, async () => {
             await loadAllData();
             renderLadder();
