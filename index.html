@@ -235,7 +235,7 @@
 
         .coach-select-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
         .coach-select-btn.selected { border-color: var(--accent); background: rgba(0, 212, 255, 0.1); }
-        .coach-select-btn .emoji { font-size: 1.5rem; display: block; margin-bottom: 0.2rem; }
+        .coach-select-btn svg { display: block; margin: 0 auto; }
         .coach-select-btn .name { font-size: 0.65rem; font-weight: 600; }
 
         .pin-input-group {
@@ -1085,9 +1085,9 @@
                     <span id="userEmoji"></span>
                     <span id="userName"></span>
                 </div>
-                <button class="header-btn" id="refreshBtn" title="Refresh data">ð</button>
-                <button class="header-btn" id="themeToggle" title="Toggle theme">ð</button>
-                <button class="header-btn" id="searchToggle" title="Search players">ð</button>
+                <button class="header-btn" id="refreshBtn" title="Refresh data">Ã°ÂÂÂ</button>
+                <button class="header-btn" id="themeToggle" title="Toggle theme">Ã°ÂÂÂ</button>
+                <button class="header-btn" id="searchToggle" title="Search players">Ã°ÂÂÂ</button>
             </div>
         </div>
     </header>
@@ -1100,7 +1100,7 @@
                 <button class="modal-close" onclick="closeSearch()">&times;</button>
             </div>
             <div class="search-bar">
-                <span>ð</span>
+                <span>Ã°ÂÂÂ</span>
                 <input type="text" id="searchInput" placeholder="Search by player name or AFL team...">
             </div>
             <div class="search-results" id="searchResults"></div>
@@ -1126,7 +1126,7 @@
 
     <!-- PAGES -->
     <div id="pageLadder" class="page active">
-        <div class="section-title">ð Ladder</div>
+        <div class="section-title">Ã°ÂÂÂ Ladder</div>
         <div style="overflow-x:auto">
             <table class="ladder-table">
                 <thead>
@@ -1149,17 +1149,17 @@
     </div>
 
     <div id="pageFixtures" class="page">
-        <div class="section-title">ð Fixtures</div>
+        <div class="section-title">Ã°ÂÂÂ Fixtures</div>
         <div id="fixturesContent"></div>
     </div>
 
     <div id="pageTeams" class="page">
-        <div class="section-title">ð¥ Teams</div>
+        <div class="section-title">Ã°ÂÂÂ¥ Teams</div>
         <div class="teams-grid" id="teamsGrid"></div>
     </div>
 
     <div id="pageTrades" class="page">
-        <div class="section-title">ð Trades</div>
+        <div class="section-title">Ã°ÂÂÂ Trades</div>
         <button class="propose-trade-btn" id="proposeTradeBtn" style="display:none" onclick="toggleTradeForm()">+ Propose Trade</button>
         <div class="trade-form" id="tradeForm">
             <h3 style="font-size:1rem;margin-bottom:0.5rem">Propose a Trade</h3>
@@ -1186,7 +1186,7 @@
     </div>
 
     <div id="pageChat" class="page">
-        <div class="section-title">ð¬ Banter</div>
+        <div class="section-title">Ã°ÂÂÂ¬ Banter</div>
         <div class="chat-container">
             <div class="chat-messages" id="chatMessages"></div>
             <div class="chat-input-area" id="chatInputArea" style="display:none">
@@ -1197,23 +1197,23 @@
     </div>
 
     <div id="pageStats" class="page">
-        <div class="section-title">ð Stats</div>
+        <div class="section-title">Ã°ÂÂÂ Stats</div>
         <div class="stats-grid" id="statsGrid"></div>
-        <div class="section-title" style="margin-top:1.5rem">ð Weekly Awards</div>
+        <div class="section-title" style="margin-top:1.5rem">Ã°ÂÂÂ Weekly Awards</div>
         <div class="stats-grid" id="awardsGrid"></div>
     </div>
 
     <div <div id="pageH2H" class="page"><div class="h2h-container"><h2 style="margin:0 0 16px;color:var(--text)">Head to Head</h2><div class="h2h-select-row"><select id="h2hCoach1" onchange="renderH2H()"></select><span class="h2h-vs">VS</span><select id="h2hCoach2" onchange="renderH2H()"></select></div><div id="h2hResults"></div></div></div>
 <div id="pageDraft" class="page"><div class="draft-container"><h2 style="margin:0 0 16px;color:var(--text)">Draft Board</h2><div class="draft-filter" id="draftFilter"></div><div id="draftBoard"></div></div></div>
 <div id="pageAdmin" class="page">
-        <div class="section-title">âï¸ Admin</div>
+        <div class="section-title">Ã¢ÂÂÃ¯Â¸Â Admin</div>
         <div class="admin-section">
             <h3 style="font-size:1rem;margin-bottom:0.5rem;color:var(--accent)">Sync Scores from SLY</h3>
             <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem">
                 Go to <a href="https://superleagueyeah.online/fixture" target="_blank" style="color:var(--accent)">superleagueyeah.online/fixture</a>, select the round, then run the bookmarklet from your bookmarks bar.
             </p>
             <div style="background:var(--bg-input);padding:0.75rem;border-radius:8px;font-family:monospace;font-size:0.7rem;word-break:break-all;margin-bottom:1rem;max-height:100px;overflow-y:auto" id="bookmarkletCode"></div>
-            <a id="bookmarkletLink" href="#" style="display:inline-block;background:var(--accent);color:#000;padding:0.5rem 1rem;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.85rem;margin-bottom:2rem">ð SLY Score Sync</a>
+            <a id="bookmarkletLink" href="#" style="display:inline-block;background:var(--accent);color:#000;padding:0.5rem 1rem;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.85rem;margin-bottom:2rem">Ã°ÂÂÂ SLY Score Sync</a>
         </div>
 
         <div class="admin-section" style="margin-top:1.5rem">
@@ -1260,35 +1260,35 @@
 <div class="countdown-bar" id="countdownBar">Next round locks in: <span class="countdown-time" id="countdownTime">--:--:--:--</span></div>
 <div class="nav-items">
             <div class="nav-item active" data-page="pageLadder" onclick="switchPage('pageLadder', this)">
-                <span class="nav-icon">ð</span>
+                <span class="nav-icon">Ã°ÂÂÂ</span>
                 <span>Ladder</span>
             </div>
             <div class="nav-item" data-page="pageFixtures" onclick="switchPage('pageFixtures', this)">
-                <span class="nav-icon">ð</span>
+                <span class="nav-icon">Ã°ÂÂÂ</span>
                 <span>Fixtures</span>
             </div>
             <div class="nav-item" data-page="pageTeams" onclick="switchPage('pageTeams', this)">
-                <span class="nav-icon">ð¥</span>
+                <span class="nav-icon">Ã°ÂÂÂ¥</span>
                 <span>Teams</span>
             </div>
             <div class="nav-item" data-page="pageTrades" onclick="switchPage('pageTrades', this)">
-                <span class="nav-icon">ð</span>
+                <span class="nav-icon">Ã°ÂÂÂ</span>
                 <span>Trades</span>
                 <span class="nav-badge" id="tradeBadge" style="display:none">0</span>
             </div>
             <div class="nav-item" data-page="pageChat" onclick="switchPage('pageChat', this)">
-                <span class="nav-icon">ð¬</span>
+                <span class="nav-icon">Ã°ÂÂÂ¬</span>
                 <span>Banter</span>
                 <span class="nav-badge" id="chatBadge" style="display:none">0</span>
             </div>
             <div class="nav-item" data-page="pageStats" onclick="switchPage('pageStats', this)">
-                <span class="nav-icon">ð</span>
+                <span class="nav-icon">Ã°ÂÂÂ</span>
                 <span>Stats</span>
             </div>
             <div class="nav-item" data-page="pageAdmin" <div class="nav-item" data-page="pageH2H" onclick="switchPage('pageH2H')"><span class="nav-icon"><span style="font-size:18px">&#9878;</span></span><span>H2H</span></div>
 <div class="nav-item" data-page="pageDraft" onclick="switchPage('pageDraft')"><span class="nav-icon"><span style="font-size:18px">&#128221;</span></span><span>Draft</span></div>
 <div id="adminNav" style="display:none" onclick="switchPage('pageAdmin', this)">
-                <span class="nav-icon">âï¸</span>
+                <span class="nav-icon">Ã¢ÂÂÃ¯Â¸Â</span>
                 <span>Admin</span>
             </div>
         </div>
@@ -1341,6 +1341,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// ========== GUERNSEY SVG HELPERS ==========
+function adjustBrightness(color, percent) {
+    const num = parseInt(color.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent * 100);
+    const R = (num >> 16) + amt;
+    const G = (num >> 8 & 0x00FF) + amt;
+    const B = (num & 0x0000FF) + amt;
+    return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+        (B < 255 ? B < 1 ? 0 : B : 255))
+        .toString(16).slice(1);
+}
+
+function getJerseySVG(color, size) {
+    size = size || 32;
+    const dk = adjustBrightness(color, -0.25);
+    return `<svg width="${size}" height="${size}" viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+      <path d="M30,8 L42,2 L58,2 L70,8 L85,18 L80,38 L70,35 L70,100 L30,100 L30,35 L20,38 L15,18 Z" fill="${color}" stroke="${dk}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M42,2 L50,32 L58,2" fill="${dk}" opacity="0.7"/>
+      <path d="M35,32 L50,52 L65,32" fill="${dk}" opacity="0.35" stroke="none"/>
+    </svg>`;
+}
+
+function getJerseyHTML(coach, size) {
+    if (!coach || !coach.color) return '<span style="opacity:0.5">👤</span>';
+    return getJerseySVG(coach.color, size || 32);
+}
+
 // ========== DATA LOADING ==========
 async function loadCoaches() {
     const { data } = await sb.from('coaches').select('id, name, team_name, color, avatar_emoji, created_at').order('id');
@@ -1382,7 +1410,7 @@ function renderCoachSelect() {
         const btn = document.createElement('div');
         btn.className = 'coach-select-btn';
         btn.dataset.id = c.id;
-        btn.innerHTML = `<span class="emoji">${c.avatar_emoji}</span><span class="name">${c.name}</span>`;
+        btn.innerHTML = `<div style="display:flex;justify-content:center;margin-bottom:0.2rem">${getJerseySVG(c.color, 28)}</div><span class="name">${c.name}</span>`;
         btn.addEventListener('click', () => {
             document.querySelectorAll('.coach-select-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
@@ -1478,12 +1506,12 @@ async function enterApp() {
     document.getElementById('mainApp').style.display = 'block';
 
     if (currentCoach) {
-        document.getElementById('userEmoji').textContent = currentCoach.avatar_emoji;
+        document.getElementById('userEmoji').innerHTML = getJerseySVG(currentCoach.color, 22);
         document.getElementById('userName').textContent = currentCoach.name;
         document.getElementById('chatInputArea').style.display = 'flex';
         document.getElementById('proposeTradeBtn').style.display = 'block';
     } else {
-        document.getElementById('userEmoji').textContent = 'ð';
+        document.getElementById('userEmoji').innerHTML = '👤';
         document.getElementById('userName').textContent = 'Guest';
     }
 
@@ -1545,7 +1573,7 @@ function switchPage(pageId, el) {
 function toggleTheme() {
     isDark = !isDark;
     document.body.classList.toggle('light-mode', !isDark);
-    document.getElementById('themeToggle').textContent = isDark ? 'ð' : 'âï¸';
+    document.getElementById('themeToggle').textContent = isDark ? 'Ã°ÂÂÂ' : 'Ã¢ÂÂÃ¯Â¸Â';
 }
 
 // ========== RENDER LADDER ==========
@@ -1602,7 +1630,7 @@ function renderLadder() {
             <td><div class="rank-badge ${rankClass}">${l.rank}</div></td>
             <td>
                 <div class="coach-cell">
-                    <span style="font-size:1.4em">${c.avatar_emoji||"\u25A0"}</span>
+                    <span style="display:inline-flex;align-items:center">${getJerseySVG(c.color, 30)}</span>
                     <div>
                         <div class="coach-cell-name">${c.name}</div>
                         <div class="coach-cell-team">${c.team_name}</div>
@@ -1698,15 +1726,15 @@ function renderFixtures() {
 
             const margin = Math.abs(m.score1 - m.score2).toFixed(1);
             card.innerHTML = `
-                ${m.match_name ? `<div class="match-name">ð ${m.match_name}</div>` : ''}
+                ${m.match_name ? `<div class="match-name">Ã°ÂÂÂ ${m.match_name}</div>` : ''}
                 <div class="match-teams">
                     <div class="match-team ${!isLive && w1 ? 'winner' : ''} ${!isLive && !w1 ? 'loser' : ''}">
-                        <div class="match-team-name">${c1.avatar_emoji} ${c1.name}</div>
+                        <div class="match-team-name" style="display:flex;align-items:center;gap:0.3rem">${getJerseySVG(c1.color, 24)} ${c1.name}</div>
                         <div class="match-score">${m.score1.toFixed(1)}</div>
                     </div>
                     <div class="match-vs">vs</div>
                     <div class="match-team ${!isLive && w2 ? 'winner' : ''} ${!isLive && !w2 ? 'loser' : ''}">
-                        <div class="match-team-name">${c2.avatar_emoji} ${c2.name}</div>
+                        <div class="match-team-name" style="display:flex;align-items:center;gap:0.3rem">${getJerseySVG(c2.color, 24)} ${c2.name}</div>
                         <div class="match-score">${m.score2.toFixed(1)}</div>
                     </div>
                 </div>
@@ -1737,7 +1765,7 @@ function renderTeams() {
 
         card.innerHTML = `
             <div class="team-card-header">
-                <div class="team-card-emoji">${c.avatar_emoji}</div>
+                <div class="team-card-emoji">${getJerseySVG(c.color, 44)}</div>
                 <div class="team-card-info">
                     <h3>${c.name}</h3>
                     <div class="team-name">${c.team_name}</div>
@@ -1764,7 +1792,7 @@ function openTeamModal(coachId) {
     const wins = scores.filter(s => s.result === 'W').length;
     const pf = scores.reduce((sum, s) => sum + parseFloat(s.points || 0), 0);
 
-    document.getElementById('modalEmoji').textContent = coach.avatar_emoji;
+    document.getElementById('modalEmoji').innerHTML = getJerseySVG(coach.color, 48);
     document.getElementById('modalCoachName').textContent = coach.name;
     document.getElementById('modalTeamName').textContent = coach.team_name;
     document.getElementById('modalStats').innerHTML = `
@@ -1808,7 +1836,7 @@ function handleSearch(e) {
                 <div style="font-weight:600">${p.name}</div>
                 <div style="font-size:0.75rem;color:var(--text-secondary)">${p.afl_team}</div>
             </div>
-            <div style="font-size:0.8rem;color:var(--accent)">${coach ? coach.avatar_emoji + ' ' + coach.name : 'Unassigned'}</div>
+            <div style="font-size:0.8rem;color:var(--accent)">${coach ? getJerseySVG(coach.color, 18) + ' ' + coach.name : 'Unassigned'}</div>
         </div>`;
     }).join('');
 }
@@ -1825,7 +1853,7 @@ function renderChat() {
     container.innerHTML = '';
 
     if (allMessages.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-icon">ð¬</div><h3>No messages yet</h3><p>Be the first to talk some trash!</p></div>';
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">Ã°ÂÂÂ¬</div><h3>No messages yet</h3><p>Be the first to talk some trash!</p></div>';
         return;
     }
 
@@ -1839,7 +1867,7 @@ function renderChat() {
         const time = new Date(msg.created_at).toLocaleString('en-AU', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
         container.innerHTML += `
             <div class="chat-msg">
-                <div class="chat-msg-avatar" style="background:${coach ? coach.color : 'var(--bg-input)'}">${coach ? coach.avatar_emoji : 'ð¤'}</div>
+                <div class="chat-msg-avatar" style="background:var(--bg-card);display:flex;align-items:center;justify-content:center">${coach ? getJerseySVG(coach.color, 28) : '🤖'}</div>
                 <div class="chat-msg-content">
                     <div class="chat-msg-header">
                         <span class="chat-msg-name" style="color:${coach ? coach.color : 'var(--text-primary)'}">${coach ? coach.name : 'Unknown'}</span>
@@ -1903,7 +1931,7 @@ function renderTrades(filter = 'pending') {
     }
 
     if (filtered.length === 0) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">ð</div><h3>No ${filter} trades</h3><p>${filter === 'pending' ? 'Propose a trade to get things moving!' : 'Nothing here yet.'}</p></div>`;
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">Ã°ÂÂÂ</div><h3>No ${filter} trades</h3><p>${filter === 'pending' ? 'Propose a trade to get things moving!' : 'Nothing here yet.'}</p></div>`;
         return;
     }
 
@@ -1928,12 +1956,12 @@ function renderTrades(filter = 'pending') {
             </div>
             <div class="trade-teams">
                 <div class="trade-side">
-                    <h4>${proposer.avatar_emoji} ${proposer.name} sends</h4>
+                    <h4>${getJerseySVG(proposer.color, 22)} ${proposer.name} sends</h4>
                     ${outPlayers.map(p => `<span class="trade-player-chip">${p}</span>`).join('')}
                 </div>
-                <div class="trade-arrow">â</div>
+                <div class="trade-arrow">Ã¢ÂÂ</div>
                 <div class="trade-side">
-                    <h4>${target.avatar_emoji} ${target.name} sends</h4>
+                    <h4>${getJerseySVG(target.color, 22)} ${target.name} sends</h4>
                     ${inPlayers.map(p => `<span class="trade-player-chip">${p}</span>`).join('')}
                 </div>
             </div>
@@ -1969,7 +1997,7 @@ function populateTradeForm() {
     const select = document.getElementById('tradeTargetCoach');
     select.innerHTML = '<option value="">Select a coach...</option>';
     allCoaches.filter(c => c.id !== currentCoach.id).forEach(c => {
-        select.innerHTML += `<option value="${c.id}">${c.avatar_emoji} ${c.name}</option>`;
+        select.innerHTML += `<option value="${c.id}">⬛ ${c.name}</option>`;
     });
 
     // My players
@@ -2151,11 +2179,11 @@ function renderStats() {
                 <div class="award-title">Round ${round.round_number} Awards</div>
                 <div class="award-item">
                     <span class="award-label">MVP</span>
-                    <span class="award-value">${mvpCoach?.avatar_emoji || ''} ${mvpCoach?.name || '?'} (${parseFloat(mvp.points)} pts)</span>
+                    <span class="award-value">${mvpCoach ? getJerseySVG(mvpCoach.color, 22) : ''} ${mvpCoach?.name || '?'} (${parseFloat(mvp.points)} pts)</span>
                 </div>
                 <div class="award-item">
                     <span class="award-label">Wooden Spoon</span>
-                    <span class="award-value">${woodenCoach?.avatar_emoji || ''} ${woodenCoach?.name || '?'} (${parseFloat(wooden.points)} pts)</span>
+                    <span class="award-value">${woodenCoach ? getJerseySVG(woodenCoach.color, 22) : ''} ${woodenCoach?.name || '?'} (${parseFloat(wooden.points)} pts)</span>
                 </div>
             </div>
         `;
@@ -2208,7 +2236,7 @@ function loadAdminScores() {
         const pts = score ? parseFloat(score.points) : 0;
         grid.innerHTML += `
             <div class="admin-score-row">
-                <span>${c.avatar_emoji}</span>
+                <span style="display:inline-flex;align-items:center">${getJerseySVG(c.color, 24)}</span>
                 <span style="font-size:0.85rem">${c.name}</span>
                 <input type="number" step="0.5" class="admin-score-input" data-coach-id="${c.id}" value="${pts}">
             </div>
