@@ -1038,6 +1038,26 @@
     
 .ticker-bar{background:var(--card);border-bottom:1px solid var(--border);overflow:hidden;height:36px;display:flex;align-items:center}.ticker-track{display:flex;animation:tickerScroll 30s linear infinite;white-space:nowrap;gap:40px}.ticker-track:hover{animation-play-state:paused}@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}.ticker-item{font-size:13px;padding:0 12px;color:var(--text-secondary);display:flex;align-items:center;gap:6px}.ticker-emoji{font-size:16px}.ticker-hot{color:var(--accent);font-weight:600}.countdown-bar{background:linear-gradient(135deg,var(--accent),#e74c3c);color:white;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;border-radius:10px;margin:8px 16px;display:none}.countdown-bar.active{display:block}.countdown-time{font-family:monospace;font-size:15px;letter-spacing:1px}.h2h-container{padding:16px}.h2h-select-row{display:flex;gap:12px;margin-bottom:16px;align-items:center}.h2h-select-row select{flex:1;padding:10px;border-radius:8px;background:var(--card);color:var(--text);border:1px solid var(--border);font-size:14px}.h2h-vs{font-size:20px;font-weight:700;color:var(--accent)}.h2h-card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid var(--border)}.h2h-stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}.h2h-stat-row:last-child{border:none}.h2h-stat-label{font-size:13px;color:var(--text-secondary);text-align:center;flex:1}.h2h-stat-val{font-size:16px;font-weight:700;flex:1}.h2h-stat-val.left{text-align:left}.h2h-stat-val.right{text-align:right}.h2h-stat-val.winner{color:var(--accent)}.h2h-round-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)}.h2h-round-label{color:var(--text-secondary);flex:1;text-align:center}.draft-container{padding:16px}.draft-board{background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--border)}.draft-round-header{background:var(--accent);color:white;padding:8px 16px;font-weight:700;font-size:14px}.draft-pick{display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);font-size:13px}.draft-pick:last-child{border:none}.draft-pick-num{width:32px;font-weight:700;color:var(--accent)}.draft-pick-player{flex:1;font-weight:600}.draft-pick-team{color:var(--text-secondary);font-size:12px}.draft-pick.mine{background:rgba(0,168,107,0.1)}.draft-filter{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.draft-filter-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;cursor:pointer}.draft-filter-btn.active{background:var(--accent);color:white;border-color:var(--accent)}.export-btn{position:fixed;bottom:80px;right:16px;width:48px;height:48px;border-radius:50%;background:var(--accent);color:white;border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;display:flex;align-items:center;justify-content:center}.export-btn:active{transform:scale(0.9)}.export-modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:none;align-items:center;justify-content:center}.export-modal.active{display:flex}.export-modal-content{background:var(--card);border-radius:16px;padding:24px;width:90%;max-width:360px;text-align:center}.export-modal-content h3{margin:0 0 16px;color:var(--text)}.export-modal-btn{display:block;width:100%;padding:12px;margin:8px 0;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;cursor:pointer}.export-modal-btn:hover{background:var(--accent);color:white}
 
+/* Pick Team page */
+.pick-team-header{padding:14px 16px;background:var(--card);border-bottom:1px solid var(--border)}
+.pick-team-round{font-size:1.05rem;font-weight:700;color:var(--accent);margin-bottom:3px}
+.pick-team-count{font-size:0.82rem;color:var(--text-secondary)}
+.pick-team-count span{color:var(--text);font-weight:700}
+.pick-team-btn{display:block;width:calc(100% - 32px);margin:12px 16px 0;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#000;font-size:1rem;font-weight:700;cursor:pointer;transition:background 0.2s}
+.pick-team-btn:disabled{opacity:0.6;cursor:not-allowed}
+.pick-player-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px}
+.pick-player-card{background:var(--card);border-radius:12px;border:2px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:all 0.15s;user-select:none;-webkit-tap-highlight-color:transparent}
+.pick-player-card.selected{border-color:var(--accent);background:rgba(0,168,107,0.1)}
+.pick-player-card.locked{cursor:default}
+.pick-player-card:active:not(.locked){transform:scale(0.97)}
+.pick-player-name{font-size:0.78rem;font-weight:600;text-align:center;color:var(--text);line-height:1.2}
+.pick-player-team{font-size:0.68rem;color:var(--text-secondary);text-align:center}
+.pick-player-badge{font-size:0.62rem;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.5px}
+.pick-player-badge.in{background:var(--accent);color:#000}
+.pick-player-badge.out{background:var(--border);color:var(--text-secondary)}
+.pick-locked-bar{text-align:center;padding:10px 16px;background:rgba(231,76,60,0.1);color:#e74c3c;font-size:0.82rem;font-weight:600}
+.pick-status{text-align:center;font-size:0.8rem;padding:6px 16px;min-height:22px}
+
 /* Auto-pick toggle */
 .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; }
 .toggle-label { font-size:1em; font-weight:600; }
@@ -1203,6 +1223,17 @@
         <div class="stats-grid" id="awardsGrid"></div>
     </div>
 
+    <div id="pagePickTeam" class="page">
+        <div class="pick-team-header">
+            <div class="pick-team-round" id="pickRoundLabel">Loading...</div>
+            <div class="pick-team-count">Selected: <span id="pickCountSelected">0</span> / <span id="pickCountTotal">18</span></div>
+        </div>
+        <div id="pickLockedBar" class="pick-locked-bar" style="display:none">🔒 Round locked — picks are read-only</div>
+        <button class="pick-team-btn" id="pickSubmitBtn" onclick="savePickTeam()">Lock In Team ✓</button>
+        <div class="pick-status" id="pickStatus"></div>
+        <div class="pick-player-grid" id="pickPlayerGrid"></div>
+    </div>
+
     <div <div id="pageH2H" class="page"><div class="h2h-container"><h2 style="margin:0 0 16px;color:var(--text)">Head to Head</h2><div class="h2h-select-row"><select id="h2hCoach1" onchange="renderH2H()"></select><span class="h2h-vs">VS</span><select id="h2hCoach2" onchange="renderH2H()"></select></div><div id="h2hResults"></div></div></div>
 <div id="pageDraft" class="page"><div class="draft-container"><h2 style="margin:0 0 16px;color:var(--text)">Draft Board</h2><div class="draft-filter" id="draftFilter"></div><div id="draftBoard"></div></div></div>
 <div id="pageAdmin" class="page">
@@ -1271,6 +1302,10 @@
                 <span class="nav-icon">👥</span>
                 <span>Teams</span>
             </div>
+            <div class="nav-item" id="pickTeamNav" data-page="pagePickTeam" onclick="switchPage('pagePickTeam', this)" style="display:none">
+                <span class="nav-icon">🏃</span>
+                <span>Pick</span>
+            </div>
             <div class="nav-item" data-page="pageTrades" onclick="switchPage('pageTrades', this)">
                 <span class="nav-icon">🔄</span>
                 <span>Trades</span>
@@ -1285,9 +1320,15 @@
                 <span class="nav-icon">📈</span>
                 <span>Stats</span>
             </div>
-            <div class="nav-item" data-page="pageAdmin" <div class="nav-item" data-page="pageH2H" onclick="switchPage('pageH2H')"><span class="nav-icon"><span style="font-size:18px">&#9878;</span></span><span>H2H</span></div>
-<div class="nav-item" data-page="pageDraft" onclick="switchPage('pageDraft')"><span class="nav-icon"><span style="font-size:18px">&#128221;</span></span><span>Draft</span></div>
-<div id="adminNav" style="display:none" onclick="switchPage('pageAdmin', this)">
+            <div class="nav-item" data-page="pageH2H" onclick="switchPage('pageH2H', this)">
+                <span class="nav-icon"><span style="font-size:18px">&#9878;</span></span>
+                <span>H2H</span>
+            </div>
+            <div class="nav-item" data-page="pageDraft" onclick="switchPage('pageDraft', this)">
+                <span class="nav-icon"><span style="font-size:18px">&#128221;</span></span>
+                <span>Draft</span>
+            </div>
+            <div id="adminNav" style="display:none" onclick="switchPage('pageAdmin', this)">
                 <span class="nav-icon">⚙️</span>
                 <span>Admin</span>
             </div>
@@ -1356,11 +1397,38 @@ function adjustBrightness(color, percent) {
 
 function getJerseySVG(color, size) {
     size = size || 32;
-    const dk = adjustBrightness(color, -0.25);
-    return `<svg width="${size}" height="${size}" viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
-      <path d="M30,8 L42,2 L58,2 L70,8 L85,18 L80,38 L70,35 L70,100 L30,100 L30,35 L20,38 L15,18 Z" fill="${color}" stroke="${dk}" stroke-width="2" stroke-linejoin="round"/>
-      <path d="M42,2 L50,32 L58,2" fill="${dk}" opacity="0.7"/>
-      <path d="M35,32 L50,52 L65,32" fill="${dk}" opacity="0.35" stroke="none"/>
+    const uid = color.replace('#','');
+    const dk  = adjustBrightness(color, -0.28);
+    const dk2 = adjustBrightness(color, -0.50);
+    const lt  = adjustBrightness(color,  0.22);
+    return `<svg width="${size}" height="${size}" viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg${uid}" x1="0" y1="0" x2="0.6" y2="1">
+          <stop offset="0%" stop-color="${lt}"/>
+          <stop offset="100%" stop-color="${dk}"/>
+        </linearGradient>
+        <linearGradient id="sg${uid}" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="${lt}"/>
+          <stop offset="100%" stop-color="${dk}"/>
+        </linearGradient>
+        <filter id="sh${uid}" x="-10%" y="-10%" width="120%" height="130%">
+          <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.30)"/>
+        </filter>
+      </defs>
+      <g filter="url(#sh${uid})">
+        <path d="M8,20 L34,16 L33,46 L9,44 Q6,42 8,20 Z"
+              fill="url(#sg${uid})" stroke="${dk2}" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M92,20 L66,16 L67,46 L91,44 Q94,42 92,20 Z"
+              fill="url(#sg${uid})" stroke="${dk2}" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M34,16 L43,6 L57,6 L66,16 L68,108 L32,108 Z"
+              fill="url(#bg${uid})" stroke="${dk2}" stroke-width="1.2" stroke-linejoin="round"/>
+      </g>
+      <path d="M35,17 L65,17 L63,30 L37,30 Z" fill="${lt}" opacity="0.25"/>
+      <path d="M37,22 L48,22 L48,40 L37,38 Z" fill="${lt}" opacity="0.12"/>
+      <path d="M43,6 L50,26 L57,6 L52,5 L50,19 L48,5 Z" fill="${dk2}" opacity="0.9"/>
+      <polyline points="43,6 50,26 57,6" fill="none" stroke="${dk2}" stroke-width="1.8" stroke-linejoin="round"/>
+      <line x1="33" y1="16" x2="33" y2="46" stroke="${dk2}" stroke-width="0.8" opacity="0.5"/>
+      <line x1="67" y1="16" x2="67" y2="46" stroke="${dk2}" stroke-width="0.8" opacity="0.5"/>
     </svg>`;
 }
 
@@ -1510,9 +1578,11 @@ async function enterApp() {
         document.getElementById('userName').textContent = currentCoach.name;
         document.getElementById('chatInputArea').style.display = 'flex';
         document.getElementById('proposeTradeBtn').style.display = 'block';
+        document.getElementById('pickTeamNav').style.display = 'flex';
     } else {
         document.getElementById('userEmoji').innerHTML = '👤';
         document.getElementById('userName').textContent = 'Guest';
+        document.getElementById('pickTeamNav').style.display = 'none';
     }
 
     // Show loading state
@@ -1566,6 +1636,9 @@ function switchPage(pageId, el) {
     }
     if (pageId === 'pageTrades') {
         document.getElementById('tradeBadge').style.display = 'none';
+    }
+    if (pageId === 'pagePickTeam') {
+        renderPickTeam();
     }
 }
 
@@ -2369,6 +2442,142 @@ function openExportModal(){document.getElementById("exportModal").classList.add(
 function closeExportModal(){document.getElementById("exportModal").classList.remove("active")}
 async function exportPage(type){closeExportModal();var pm={ladder:"pageLadder",fixtures:"pageFixtures",stats:"pageStats",h2h:"pageH2H"};var el=document.getElementById(pm[type]);if(!el)return;if(typeof html2canvas!=="undefined"){try{var cv=await html2canvas(el,{backgroundColor:"#0f0f1e"});var a=document.createElement("a");a.download="SLY_"+type+"_"+new Date().toISOString().split("T")[0]+".png";a.href=cv.toDataURL();a.click();return}catch(e){}}try{await navigator.clipboard.writeText(el.innerText);alert("Copied "+type+" to clipboard!")}catch(e){alert("Screenshot not available")}}
 function initNewFeatures(){initTicker();initCountdown();initH2HSelects()}
+
+// ========== PICK TEAM ==========
+let pickState = {};
+let pickRoundId = null;
+const LINEUP_SIZE = 18;
+
+async function renderPickTeam() {
+    const grid = document.getElementById('pickPlayerGrid');
+    const roundLabel = document.getElementById('pickRoundLabel');
+    const submitBtn = document.getElementById('pickSubmitBtn');
+    const lockedBar = document.getElementById('pickLockedBar');
+    const status = document.getElementById('pickStatus');
+
+    if (!currentCoach || isGuest) {
+        roundLabel.textContent = 'Pick Team';
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔒</div><h3>Log in to pick your team</h3></div>';
+        submitBtn.style.display = 'none';
+        return;
+    }
+
+    roundLabel.textContent = 'Loading...';
+    status.textContent = '';
+
+    const openRound = allRounds.find(r => r.status === 'open')
+                   || allRounds.find(r => r.status === 'live')
+                   || [...allRounds].sort((a,b) => b.round_number - a.round_number)[0];
+
+    if (!openRound) {
+        roundLabel.textContent = 'No active round';
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><h3>No rounds available</h3></div>';
+        submitBtn.style.display = 'none';
+        return;
+    }
+
+    pickRoundId = openRound.id;
+    const isLocked = openRound.status === 'live' || openRound.status === 'completed';
+    const statusLabel = openRound.status === 'open' ? 'Picks open' : openRound.status === 'live' ? 'Round in progress' : 'Completed';
+    roundLabel.textContent = 'Round ' + openRound.round_number + ' — ' + statusLabel;
+    lockedBar.style.display = isLocked ? 'block' : 'none';
+    submitBtn.style.display = isLocked ? 'none' : 'block';
+
+    const { data: picks } = await sb.from('round_picks')
+        .select('player_id')
+        .eq('coach_id', currentCoach.id)
+        .eq('round_id', pickRoundId);
+
+    const existingPickIds = new Set((picks || []).map(p => Number(p.player_id)));
+
+    const myPlayers = allPlayers.filter(p => p.coach_id === currentCoach.id)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    pickState = {};
+    if (existingPickIds.size > 0) {
+        myPlayers.forEach(p => { pickState[p.id] = existingPickIds.has(p.id); });
+    } else {
+        myPlayers.forEach((p, i) => { pickState[p.id] = i < LINEUP_SIZE; });
+    }
+
+    document.getElementById('pickCountTotal').textContent = LINEUP_SIZE;
+    renderPickGrid(myPlayers, isLocked);
+    updatePickCount();
+}
+
+function renderPickGrid(players, locked) {
+    const grid = document.getElementById('pickPlayerGrid');
+    if (!players.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><h3>No players in your squad</h3></div>';
+        return;
+    }
+    grid.innerHTML = players.map(p => {
+        const isIn = pickState[p.id];
+        return '<div class="pick-player-card' + (isIn ? ' selected' : '') + (locked ? ' locked' : '') + '" id="pick_' + p.id + '" onclick="' + (locked ? '' : 'togglePick(' + p.id + ')') + '">' +
+            '<div class="pick-player-name">' + p.name + '</div>' +
+            '<div class="pick-player-team">' + (p.afl_team || '') + '</div>' +
+            '<div class="pick-player-badge ' + (isIn ? 'in' : 'out') + '">' + (isIn ? 'PLAYING' : 'BENCH') + '</div>' +
+            '</div>';
+    }).join('');
+}
+
+function togglePick(playerId) {
+    pickState[playerId] = !pickState[playerId];
+    const card = document.getElementById('pick_' + playerId);
+    if (!card) return;
+    const isIn = pickState[playerId];
+    card.classList.toggle('selected', isIn);
+    const badge = card.querySelector('.pick-player-badge');
+    badge.className = 'pick-player-badge ' + (isIn ? 'in' : 'out');
+    badge.textContent = isIn ? 'PLAYING' : 'BENCH';
+    updatePickCount();
+}
+
+function updatePickCount() {
+    const count = Object.values(pickState).filter(Boolean).length;
+    document.getElementById('pickCountSelected').textContent = count;
+    const btn = document.getElementById('pickSubmitBtn');
+    if (!btn) return;
+    const ok = count === LINEUP_SIZE;
+    btn.textContent = ok ? 'Lock In Team ✓' : 'Save Picks (' + count + '/' + LINEUP_SIZE + ')';
+    btn.style.background = ok ? 'var(--accent)' : '#e67e22';
+    btn.disabled = false;
+}
+
+async function savePickTeam() {
+    if (!currentCoach || !pickRoundId) return;
+    const btn = document.getElementById('pickSubmitBtn');
+    const status = document.getElementById('pickStatus');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    status.style.color = 'var(--text-secondary)';
+    status.textContent = '';
+    try {
+        const { error: delErr } = await sb.from('round_picks')
+            .delete()
+            .eq('coach_id', currentCoach.id)
+            .eq('round_id', pickRoundId);
+        if (delErr) throw delErr;
+
+        const selected = Object.entries(pickState)
+            .filter(([, v]) => v)
+            .map(([k]) => ({ coach_id: currentCoach.id, round_id: pickRoundId, player_id: parseInt(k) }));
+
+        if (selected.length > 0) {
+            const { error: insErr } = await sb.from('round_picks').insert(selected);
+            if (insErr) throw insErr;
+        }
+
+        status.style.color = 'var(--accent)';
+        status.textContent = '✓ Saved! ' + selected.length + ' players in your team';
+    } catch(e) {
+        status.style.color = '#e74c3c';
+        status.textContent = 'Error: ' + (e.message || 'Could not save picks');
+    } finally {
+        btn.disabled = false;
+        updatePickCount();
+    }
+}
 
 
     // ========== AUTO-PICK TOGGLE ==========
