@@ -1045,19 +1045,40 @@
 .pick-team-count span{color:var(--text);font-weight:700}
 .pick-team-btn{display:block;width:calc(100% - 32px);margin:12px 16px 0;padding:14px;border-radius:12px;border:none;background:var(--accent);color:#000;font-size:1rem;font-weight:700;cursor:pointer;transition:background 0.2s}
 .pick-team-btn:disabled{opacity:0.6;cursor:not-allowed}
-.pick-player-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px}
-.pick-player-card{background:var(--card);border-radius:12px;border:2px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:all 0.15s;user-select:none;-webkit-tap-highlight-color:transparent}
-.pick-player-card.selected{border-color:var(--accent);background:rgba(0,168,107,0.1)}
-.pick-player-card.locked{cursor:default}
-.pick-player-card:active:not(.locked){transform:scale(0.97)}
-.pick-player-name{font-size:0.78rem;font-weight:600;text-align:center;color:var(--text);line-height:1.2}
-.pick-player-team{font-size:0.68rem;color:var(--text-secondary);text-align:center}
-.pick-player-badge{font-size:0.62rem;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.5px}
-.pick-player-badge.in{background:var(--accent);color:#000}
-.pick-player-badge.out{background:var(--border);color:var(--text-secondary)}
 .pick-locked-bar{text-align:center;padding:10px 16px;background:rgba(231,76,60,0.1);color:#e74c3c;font-size:0.82rem;font-weight:600}
 .pick-status{text-align:center;font-size:0.8rem;padding:6px 16px;min-height:22px}
-
+.pick-slots{padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.pick-slot-row{display:flex;align-items:center;background:var(--card);border-radius:12px;border:2px solid var(--border);padding:10px 14px;gap:12px;cursor:pointer;transition:border-color 0.15s;user-select:none;-webkit-tap-highlight-color:transparent}
+.pick-slot-row.filled{border-color:var(--accent)}
+.pick-slot-row.emergency.filled{border-color:rgba(0,168,107,0.4)}
+.pick-slot-row.locked{cursor:default}
+.pick-slot-row:active:not(.locked){transform:scale(0.98)}
+.pick-slot-tag{font-size:0.65rem;font-weight:700;width:28px;min-width:28px;text-align:center;padding:4px 2px;border-radius:6px;background:var(--bg-input);color:var(--text-secondary)}
+.pick-slot-row.filled .pick-slot-tag{background:var(--accent);color:#000}
+.pick-slot-row.emergency.filled .pick-slot-tag{background:rgba(0,168,107,0.25);color:var(--accent)}
+.pick-slot-name{font-size:0.7rem;color:var(--text-secondary);width:68px;min-width:68px}
+.pick-slot-info{flex:1;min-width:0}
+.pick-slot-player{font-size:0.88rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick-slot-player.empty{color:var(--text-secondary);font-weight:400;font-style:italic}
+.pick-slot-team{font-size:0.68rem;color:var(--text-secondary)}
+.pick-slot-score{font-size:0.85rem;font-weight:700;color:var(--accent);min-width:36px;text-align:right}
+.pick-slot-clear{font-size:0.85rem;color:var(--text-secondary);background:none;border:none;cursor:pointer;padding:4px 4px;margin:-4px -4px -4px 2px;line-height:1}
+/* Player picker bottom sheet */
+.pick-picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:none;align-items:flex-end}
+.pick-picker-overlay.active{display:flex}
+.pick-picker-sheet{background:var(--bg-secondary);border-radius:18px 18px 0 0;width:100%;max-height:75vh;display:flex;flex-direction:column;overflow:hidden}
+.pick-picker-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.pick-picker-title{font-weight:700;font-size:1rem;flex:1}
+.pick-picker-slot-tag{font-size:0.72rem;color:var(--accent);font-weight:700;padding:3px 10px;background:rgba(0,168,107,0.15);border-radius:20px}
+.pick-picker-close{font-size:1.2rem;color:var(--text-secondary);background:none;border:none;cursor:pointer;padding:4px}
+.pick-picker-list{overflow-y:auto;flex:1}
+.pick-picker-item{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.1s}
+.pick-picker-item:active{background:var(--bg-input)}
+.pick-picker-item.used{opacity:0.35;pointer-events:none}
+.pick-picker-item.current{background:rgba(0,168,107,0.08)}
+.pick-picker-player-name{font-weight:600;font-size:0.9rem}
+.pick-picker-player-team{font-size:0.72rem;color:var(--text-secondary);margin-top:1px}
+.pick-picker-player-stats{margin-left:auto;font-size:0.72rem;color:var(--text-secondary);text-align:right;white-space:nowrap}
 /* Auto-pick toggle */
 .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; }
 .toggle-label { font-size:1em; font-weight:600; }
@@ -1226,15 +1247,26 @@
     <div id="pagePickTeam" class="page">
         <div class="pick-team-header">
             <div class="pick-team-round" id="pickRoundLabel">Loading...</div>
-            <div class="pick-team-count">Selected: <span id="pickCountSelected">0</span> / <span id="pickCountTotal">18</span></div>
+            <div class="pick-team-count"><span id="pickCountSelected">0</span>/11 slots filled</div>
         </div>
         <div id="pickLockedBar" class="pick-locked-bar" style="display:none">🔒 Round locked — picks are read-only</div>
         <button class="pick-team-btn" id="pickSubmitBtn" onclick="savePickTeam()">Lock In Team ✓</button>
         <div class="pick-status" id="pickStatus"></div>
-        <div class="pick-player-grid" id="pickPlayerGrid"></div>
+        <div class="pick-slots" id="pickSlotsContainer"></div>
+    </div>
+    <!-- Player picker bottom sheet -->
+    <div class="pick-picker-overlay" id="pickPickerOverlay" onclick="closeSlotPicker(event)">
+        <div class="pick-picker-sheet">
+            <div class="pick-picker-header">
+                <div class="pick-picker-title" id="pickPickerTitle">Select Player</div>
+                <span class="pick-picker-slot-tag" id="pickPickerSlotTag">SG</span>
+                <button class="pick-picker-close" onclick="closeSlotPicker()">✕</button>
+            </div>
+            <div class="pick-picker-list" id="pickPickerList"></div>
+        </div>
     </div>
 
-    <div <div id="pageH2H" class="page"><div class="h2h-container"><h2 style="margin:0 0 16px;color:var(--text)">Head to Head</h2><div class="h2h-select-row"><select id="h2hCoach1" onchange="renderH2H()"></select><span class="h2h-vs">VS</span><select id="h2hCoach2" onchange="renderH2H()"></select></div><div id="h2hResults"></div></div></div>
+    <div id="pageH2H"<div id="pageH2H" class="page"><div class="h2h-container"><h2 style="margin:0 0 16px;color:var(--text)">Head to Head</h2><div class="h2h-select-row"><select id="h2hCoach1" onchange="renderH2H()"></select><span class="h2h-vs">VS</span><select id="h2hCoach2" onchange="renderH2H()"></select></div><div id="h2hResults"></div></div></div>
 <div id="pageDraft" class="page"><div class="draft-container"><h2 style="margin:0 0 16px;color:var(--text)">Draft Board</h2><div class="draft-filter" id="draftFilter"></div><div id="draftBoard"></div></div></div>
 <div id="pageAdmin" class="page">
         <div class="section-title">⚙️ Admin</div>
@@ -1256,6 +1288,33 @@
             </div>
             <div id="adminScoreGrid" style="display:grid;gap:0.5rem"></div>
             <div id="adminStatus" style="margin-top:0.75rem;font-size:0.8rem;color:var(--accent)"></div>
+        </div>
+
+        <div class="admin-section" style="margin-top:1.5rem">
+            <h3 style="font-size:1rem;margin-bottom:0.5rem;color:var(--accent)">Enter Player Stats → Auto-Score</h3>
+            <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.75rem">Enter stats for each player. Scores are auto-calculated from their round picks.</p>
+            <div style="display:flex;gap:0.5rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
+                <label style="font-size:0.85rem">Round:</label>
+                <select id="adminStatsRound" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.4rem;border-radius:6px;font-size:0.85rem" onchange="loadAdminStats()"></select>
+                <button onclick="calcAndSaveScores()" style="background:var(--accent);color:#000;border:none;padding:0.4rem 1rem;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;margin-left:auto">Calculate & Save Scores</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table id="adminStatsTable" style="width:100%;border-collapse:collapse;font-size:0.78rem">
+                    <thead>
+                        <tr style="border-bottom:1px solid var(--border);color:var(--text-secondary)">
+                            <th style="text-align:left;padding:6px 4px;font-weight:600">Player</th>
+                            <th style="padding:6px 4px;width:44px">G</th>
+                            <th style="padding:6px 4px;width:44px">B</th>
+                            <th style="padding:6px 4px;width:44px">M</th>
+                            <th style="padding:6px 4px;width:44px">T</th>
+                            <th style="padding:6px 4px;width:44px">HO</th>
+                            <th style="padding:6px 4px;width:44px">D</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminStatsBody"></tbody>
+                </table>
+            </div>
+            <div id="adminStatsStatus" style="margin-top:0.75rem;font-size:0.8rem;color:var(--accent)"></div>
         </div>
 
         <div class="admin-section" style="margin-top:1.5rem">
@@ -2282,7 +2341,7 @@ function setupAdmin() {
     }
     document.getElementById('adminNav').style.display = '';
 
-    const selects = ['adminRoundSelect', 'adminPasteRound'];
+    const selects = ['adminRoundSelect', 'adminPasteRound', 'adminStatsRound'];
     selects.forEach(selId => {
         const sel = document.getElementById(selId);
         sel.innerHTML = '';
@@ -2292,6 +2351,7 @@ function setupAdmin() {
     });
 
     loadAdminScores();
+    loadAdminStats();
     setupBookmarklet();
 }
 
@@ -2377,6 +2437,109 @@ async function applyPastedScores() {
     setTimeout(() => statusEl.textContent = '', 5000);
 }
 
+// ========== ADMIN STATS ==========
+async function loadAdminStats() {
+    const roundId = parseInt(document.getElementById('adminStatsRound').value);
+    const tbody = document.getElementById('adminStatsBody');
+    if (!tbody || isNaN(roundId)) return;
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--text-secondary)">Loading...</td></tr>';
+
+    // Fetch existing stats for this round
+    const { data: existingStats } = await sb.from('player_round_stats')
+        .select('*').eq('round_id', roundId);
+    const statsMap = {};
+    (existingStats || []).forEach(s => statsMap[s.player_id] = s);
+
+    // Sort players by afl_team then name
+    const sorted = [...allPlayers].sort((a,b) => {
+        if (a.afl_team < b.afl_team) return -1;
+        if (a.afl_team > b.afl_team) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    let html = '';
+    sorted.forEach(p => {
+        const s = statsMap[p.id] || {};
+        html += `<tr>
+            <td style="font-size:0.8rem;padding:4px 6px;white-space:nowrap">${p.name} <span style="color:var(--text-secondary);font-size:0.7rem">${p.afl_team||''}</span></td>
+            <td><input type="number" min="0" class="admin-stat-input" data-player="${p.id}" data-stat="goals"     value="${s.goals||0}"    style="width:44px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:0.8rem"></td>
+            <td><input type="number" min="0" class="admin-stat-input" data-player="${p.id}" data-stat="behinds"   value="${s.behinds||0}"  style="width:44px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:0.8rem"></td>
+            <td><input type="number" min="0" class="admin-stat-input" data-player="${p.id}" data-stat="marks"     value="${s.marks||0}"    style="width:44px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:0.8rem"></td>
+            <td><input type="number" min="0" class="admin-stat-input" data-player="${p.id}" data-stat="tackles"   value="${s.tackles||0}"  style="width:44px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:0.8rem"></td>
+            <td><input type="number" min="0" class="admin-stat-input" data-player="${p.id}" data-stat="hitouts"   value="${s.hitouts||0}"  style="width:44px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:0.8rem"></td>
+            <td><input type="number" min="0" class="admin-stat-input" data-player="${p.id}" data-stat="disposals" value="${s.disposals||0}" style="width:44px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:0.8rem"></td>
+        </tr>`;
+    });
+    tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--text-secondary)">No players found</td></tr>';
+}
+
+async function calcAndSaveScores() {
+    const roundId = parseInt(document.getElementById('adminStatsRound').value);
+    const statusEl = document.getElementById('adminStatsStatus');
+    if (isNaN(roundId)) { statusEl.textContent = 'Select a round first'; return; }
+    statusEl.style.color = 'var(--text-secondary)';
+    statusEl.textContent = 'Saving stats...';
+
+    // Collect all non-zero stats from table
+    const inputs = document.querySelectorAll('.admin-stat-input');
+    const playerStatsMap = {}; // player_id → { goals, behinds, marks, tackles, hitouts, disposals }
+    inputs.forEach(inp => {
+        const pid = parseInt(inp.dataset.player);
+        const stat = inp.dataset.stat;
+        const val = parseFloat(inp.value) || 0;
+        if (!playerStatsMap[pid]) playerStatsMap[pid] = { goals:0, behinds:0, marks:0, tackles:0, hitouts:0, disposals:0 };
+        playerStatsMap[pid][stat] = val;
+    });
+
+    // Only upsert rows where at least one stat > 0
+    const rows = Object.entries(playerStatsMap)
+        .filter(([,s]) => Object.values(s).some(v => v > 0))
+        .map(([pid, s]) => ({ player_id: parseInt(pid), round_id: roundId, ...s }));
+
+    if (rows.length > 0) {
+        const { error: statsErr } = await sb.from('player_round_stats')
+            .upsert(rows, { onConflict: 'player_id,round_id' });
+        if (statsErr) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error saving stats: '+statsErr.message; return; }
+    }
+
+    statusEl.textContent = `Stats saved (${rows.length} players). Calculating scores...`;
+
+    // Load all round_picks for this round
+    const { data: allPicks, error: picksErr } = await sb.from('round_picks')
+        .select('coach_id, player_id, slot').eq('round_id', roundId);
+    if (picksErr) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error loading picks: '+picksErr.message; return; }
+
+    // Build per-coach score from their picks
+    const coachScores = {};
+    (allPicks || []).forEach(pick => {
+        if (!PICK_SCORING_SLOTS.includes(pick.slot)) return; // skip emergencies
+        const stats = playerStatsMap[pick.player_id];
+        const pts = calcSlotScore(pick.slot, stats || {});
+        if (!coachScores[pick.coach_id]) coachScores[pick.coach_id] = 0;
+        coachScores[pick.coach_id] += (pts || 0);
+    });
+
+    // Upsert scores for each coach that has picks
+    let saved = 0;
+    for (const [coachIdStr, points] of Object.entries(coachScores)) {
+        const coachId = parseInt(coachIdStr);
+        const { error } = await sb.from('scores')
+            .upsert({ coach_id: coachId, round_id: roundId, points },
+                    { onConflict: 'coach_id,round_id' });
+        if (!error) saved++;
+    }
+
+    await loadAllData();
+    renderLadder();
+    renderFixtures();
+    renderStats();
+    loadAdminScores();
+
+    statusEl.style.color = 'var(--accent)';
+    statusEl.textContent = `✓ Done! Stats saved, ${saved} coach scores updated.`;
+    setTimeout(() => statusEl.textContent = '', 6000);
+}
+
 // ========== REFRESH ==========
 async function refreshData() {
     const btn = document.getElementById('refreshBtn');
@@ -2449,12 +2612,38 @@ async function exportPage(type){closeExportModal();var pm={ladder:"pageLadder",f
 function initNewFeatures(){initTicker();initCountdown();initH2HSelects()}
 
 // ========== PICK TEAM ==========
-let pickState = {};
+// ========== PICK TEAM ==========
+const PICK_SCORING_SLOTS = ['SG','G1','G2','R','M','T','D1','D2'];
+const PICK_EMERGENCY_SLOTS = ['E1','E2','E3'];
+const PICK_ALL_SLOTS = [...PICK_SCORING_SLOTS, ...PICK_EMERGENCY_SLOTS];
+const PICK_SLOT_NAMES = {
+    SG:'Super Goal', G1:'Goals 1', G2:'Goals 2', R:'Ruck',
+    M:'Marks', T:'Tackles', D1:'Disposals 1', D2:'Disposals 2',
+    E1:'Emergency 1', E2:'Emergency 2', E3:'Emergency 3'
+};
+let pickSlots = {};
 let pickRoundId = null;
-const LINEUP_SIZE = 18;
+let pickIsLocked = false;
+let pickRoundStats = {};
+let activePickSlot = null;
+
+function calcSlotScore(slot, stats) {
+    if (!stats) return null;
+    const g=stats.goals||0, b=stats.behinds||0, m=stats.marks||0,
+          t=stats.tackles||0, h=stats.hitouts||0, d=stats.disposals||0;
+    switch(slot) {
+        case 'SG': return g*10 + b;
+        case 'G1': case 'G2': return g*6 + b;
+        case 'R':  return h*0.5 + d*0.5 + m;
+        case 'M':  return m*4;
+        case 'T':  return t*4;
+        case 'D1': case 'D2': return d;
+        default:   return null;
+    }
+}
 
 async function renderPickTeam() {
-    const grid = document.getElementById('pickPlayerGrid');
+    const container = document.getElementById('pickSlotsContainer');
     const roundLabel = document.getElementById('pickRoundLabel');
     const submitBtn = document.getElementById('pickSubmitBtn');
     const lockedBar = document.getElementById('pickLockedBar');
@@ -2462,7 +2651,7 @@ async function renderPickTeam() {
 
     if (!currentCoach || isGuest) {
         roundLabel.textContent = 'Pick Team';
-        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔒</div><h3>Log in to pick your team</h3></div>';
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><h3>Log in to pick your team</h3></div>';
         submitBtn.style.display = 'none';
         return;
     }
@@ -2476,116 +2665,156 @@ async function renderPickTeam() {
 
     if (!openRound) {
         roundLabel.textContent = 'No active round';
-        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><h3>No rounds available</h3></div>';
+        container.innerHTML = '<div class="empty-state"><h3>No rounds available</h3></div>';
         submitBtn.style.display = 'none';
         return;
     }
 
     pickRoundId = openRound.id;
-    const isLocked = openRound.status === 'live' || openRound.status === 'completed';
+    pickIsLocked = openRound.status === 'live' || openRound.status === 'completed';
     const statusLabel = openRound.status === 'open' ? 'Picks open' : openRound.status === 'live' ? 'Round in progress' : 'Completed';
-    roundLabel.textContent = 'Round ' + openRound.round_number + ' — ' + statusLabel;
-    lockedBar.style.display = isLocked ? 'block' : 'none';
-    submitBtn.style.display = isLocked ? 'none' : 'block';
+    roundLabel.textContent = `Round ${openRound.round_number} — ${statusLabel}`;
+    lockedBar.style.display = pickIsLocked ? 'block' : 'none';
+    submitBtn.style.display = pickIsLocked ? 'none' : 'block';
 
     const { data: picks } = await sb.from('round_picks')
-        .select('player_id')
+        .select('slot, player_id')
         .eq('coach_id', currentCoach.id)
         .eq('round_id', pickRoundId);
 
-    const existingPickIds = new Set((picks || []).map(p => Number(p.player_id)));
+    pickSlots = {};
+    (picks || []).forEach(p => { if (p.slot) pickSlots[p.slot] = Number(p.player_id); });
 
-    const myPlayers = allPlayers.filter(p => p.coach_id === currentCoach.id)
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-    pickState = {};
-    if (existingPickIds.size > 0) {
-        myPlayers.forEach(p => { pickState[p.id] = existingPickIds.has(p.id); });
-    } else {
-        myPlayers.forEach((p, i) => { pickState[p.id] = i < LINEUP_SIZE; });
+    const myPlayers = allPlayers.filter(p => p.coach_id === currentCoach.id);
+    pickRoundStats = {};
+    if (myPlayers.length > 0) {
+        const { data: stats } = await sb.from('player_round_stats')
+            .select('*').eq('round_id', pickRoundId)
+            .in('player_id', myPlayers.map(p => p.id));
+        (stats || []).forEach(s => { pickRoundStats[s.player_id] = s; });
     }
 
-    document.getElementById('pickCountTotal').textContent = LINEUP_SIZE;
-    renderPickGrid(myPlayers, isLocked);
-    updatePickCount();
+    renderPickSlots(myPlayers);
+    updateSlotCount();
 }
 
-function renderPickGrid(players, locked) {
-    const grid = document.getElementById('pickPlayerGrid');
-    if (!players.length) {
-        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><h3>No players in your squad</h3></div>';
+function renderPickSlots(players) {
+    const container = document.getElementById('pickSlotsContainer');
+    if (!players || !players.length) {
+        container.innerHTML = '<div class="empty-state"><h3>No players in your squad</h3></div>';
         return;
     }
-    grid.innerHTML = players.map(p => {
-        const isIn = pickState[p.id];
-        return '<div class="pick-player-card' + (isIn ? ' selected' : '') + (locked ? ' locked' : '') + '" id="pick_' + p.id + '" onclick="' + (locked ? '' : 'togglePick(' + p.id + ')') + '">' +
-            '<div class="pick-player-name">' + p.name + '</div>' +
-            '<div class="pick-player-team">' + (p.afl_team || '') + '</div>' +
-            '<div class="pick-player-badge ' + (isIn ? 'in' : 'out') + '">' + (isIn ? 'PLAYING' : 'BENCH') + '</div>' +
-            '</div>';
+    const playerMap = {};
+    players.forEach(p => playerMap[p.id] = p);
+
+    container.innerHTML = PICK_ALL_SLOTS.map(slot => {
+        const isEmergency = PICK_EMERGENCY_SLOTS.includes(slot);
+        const playerId = pickSlots[slot];
+        const player = playerId ? playerMap[playerId] : null;
+        const stats = playerId ? pickRoundStats[playerId] : null;
+        const score = (!isEmergency && stats) ? calcSlotScore(slot, stats) : null;
+        const scoreStr = score !== null ? score.toFixed(1) : '';
+
+        return `<div class="pick-slot-row${player?' filled':''}${isEmergency?' emergency':''}${pickIsLocked?' locked':''}"
+                     id="slot_${slot}" onclick="${pickIsLocked?'':`openSlotPicker('${slot}')`}">
+            <div class="pick-slot-tag">${slot}</div>
+            <div class="pick-slot-name">${PICK_SLOT_NAMES[slot]}</div>
+            <div class="pick-slot-info">
+                ${player
+                    ? `<div class="pick-slot-player">${player.name}</div><div class="pick-slot-team">${player.afl_team||''}</div>`
+                    : `<div class="pick-slot-player empty">+ Select player</div>`}
+            </div>
+            ${scoreStr ? `<div class="pick-slot-score">${scoreStr}</div>` : ''}
+            ${player && !pickIsLocked ? `<button class="pick-slot-clear" onclick="event.stopPropagation();clearSlot('${slot}')">✕</button>` : ''}
+        </div>`;
     }).join('');
 }
 
-function togglePick(playerId) {
-    pickState[playerId] = !pickState[playerId];
-    const card = document.getElementById('pick_' + playerId);
-    if (!card) return;
-    const isIn = pickState[playerId];
-    card.classList.toggle('selected', isIn);
-    const badge = card.querySelector('.pick-player-badge');
-    badge.className = 'pick-player-badge ' + (isIn ? 'in' : 'out');
-    badge.textContent = isIn ? 'PLAYING' : 'BENCH';
-    updatePickCount();
-}
-
-function updatePickCount() {
-    const count = Object.values(pickState).filter(Boolean).length;
-    document.getElementById('pickCountSelected').textContent = count;
+function updateSlotCount() {
+    const filled = PICK_ALL_SLOTS.filter(s => pickSlots[s]).length;
+    document.getElementById('pickCountSelected').textContent = filled;
     const btn = document.getElementById('pickSubmitBtn');
     if (!btn) return;
-    const ok = count === LINEUP_SIZE;
-    btn.textContent = ok ? 'Lock In Team ✓' : 'Save Picks (' + count + '/' + LINEUP_SIZE + ')';
-    btn.style.background = ok ? 'var(--accent)' : '#e67e22';
+    const scoringFilled = PICK_SCORING_SLOTS.filter(s => pickSlots[s]).length;
+    btn.textContent = filled === 11 ? 'Lock In Team ✓' : `Save Picks (${filled}/11)`;
+    btn.style.background = scoringFilled === 8 ? 'var(--accent)' : '#e67e22';
     btn.disabled = false;
+}
+
+function openSlotPicker(slot) {
+    if (pickIsLocked) return;
+    activePickSlot = slot;
+    const myPlayers = allPlayers.filter(p => p.coach_id === currentCoach.id)
+        .sort((a,b) => a.name.localeCompare(b.name));
+    const usedIds = new Set(Object.values(pickSlots).filter(Boolean));
+    const currentInSlot = pickSlots[slot];
+
+    document.getElementById('pickPickerTitle').textContent = PICK_SLOT_NAMES[slot];
+    document.getElementById('pickPickerSlotTag').textContent = slot;
+
+    const list = document.getElementById('pickPickerList');
+    list.innerHTML = myPlayers.map(p => {
+        const isUsed = usedIds.has(p.id) && p.id !== currentInSlot;
+        const isCurrent = p.id === currentInSlot;
+        const stats = pickRoundStats[p.id];
+        const statStr = stats ? `${stats.goals??0}g ${stats.disposals??0}d ${stats.marks??0}m ${stats.tackles??0}t` : '';
+        return `<div class="pick-picker-item${isUsed?' used':''}${isCurrent?' current':''}"
+                     onclick="choosePlayerForSlot('${slot}',${p.id})">
+            <div>
+                <div class="pick-picker-player-name">${p.name}</div>
+                <div class="pick-picker-player-team">${p.afl_team||''}</div>
+            </div>
+            ${statStr ? `<div class="pick-picker-player-stats">${statStr}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    document.getElementById('pickPickerOverlay').classList.add('active');
+}
+
+function closeSlotPicker(event) {
+    if (event && event.target !== document.getElementById('pickPickerOverlay')) return;
+    document.getElementById('pickPickerOverlay').classList.remove('active');
+    activePickSlot = null;
+}
+
+function choosePlayerForSlot(slot, playerId) {
+    pickSlots[slot] = playerId;
+    document.getElementById('pickPickerOverlay').classList.remove('active');
+    activePickSlot = null;
+    renderPickSlots(allPlayers.filter(p => p.coach_id === currentCoach.id));
+    updateSlotCount();
+}
+
+function clearSlot(slot) {
+    delete pickSlots[slot];
+    renderPickSlots(allPlayers.filter(p => p.coach_id === currentCoach.id));
+    updateSlotCount();
 }
 
 async function savePickTeam() {
     if (!currentCoach || !pickRoundId) return;
     const btn = document.getElementById('pickSubmitBtn');
     const status = document.getElementById('pickStatus');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-    status.style.color = 'var(--text-secondary)';
-    status.textContent = '';
+    btn.disabled = true; btn.textContent = 'Saving...';
+    status.style.color = 'var(--text-secondary)'; status.textContent = '';
     try {
-        const { error: delErr } = await sb.from('round_picks')
-            .delete()
-            .eq('coach_id', currentCoach.id)
-            .eq('round_id', pickRoundId);
-        if (delErr) throw delErr;
-
-        const selected = Object.entries(pickState)
-            .filter(([, v]) => v)
-            .map(([k]) => ({ coach_id: currentCoach.id, round_id: pickRoundId, player_id: parseInt(k) }));
-
-        if (selected.length > 0) {
-            const { error: insErr } = await sb.from('round_picks').insert(selected);
-            if (insErr) throw insErr;
+        await sb.from('round_picks').delete()
+            .eq('coach_id', currentCoach.id).eq('round_id', pickRoundId);
+        const rows = Object.entries(pickSlots).filter(([,pid])=>pid)
+            .map(([slot,pid]) => ({ coach_id: currentCoach.id, round_id: pickRoundId, player_id: pid, slot }));
+        if (rows.length > 0) {
+            const { error } = await sb.from('round_picks').insert(rows);
+            if (error) throw error;
         }
-
         status.style.color = 'var(--accent)';
-        status.textContent = '✓ Saved! ' + selected.length + ' players in your team';
+        status.textContent = `✓ Team saved! ${rows.length}/11 slots filled`;
     } catch(e) {
         status.style.color = '#e74c3c';
         status.textContent = 'Error: ' + (e.message || 'Could not save picks');
-    } finally {
-        btn.disabled = false;
-        updatePickCount();
-    }
+    } finally { btn.disabled = false; updateSlotCount(); }
 }
 
-
-    // ========== AUTO-PICK TOGGLE ==========
+// ========== AUTO-PICK TOGGLE ==========
     async function loadAutoPickStatus() {
       try {
         const { data } = await sb.from('config').select('value').eq('key', 'auto_pick_enabled').single();
