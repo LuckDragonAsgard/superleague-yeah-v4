@@ -1249,8 +1249,11 @@
             <div class="pick-team-round" id="pickRoundLabel">Loading...</div>
             <div class="pick-team-count"><span id="pickCountSelected">0</span>/11 slots filled</div>
         </div>
-        <div id="pickLockedBar" class="pick-locked-bar" style="display:none">🔒 Round locked — picks are read-only</div>
-        <button class="pick-team-btn" id="pickSubmitBtn" onclick="savePickTeam()">Lock In Team ✓</button>
+                <div id="pickLockedBar" class="pick-locked-bar" style="display:none">🔒 Round locked — picks are read-only</div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+            <button class="pick-team-btn" id="pickSubmitBtn" onclick="savePickTeam()" style="flex:1;margin-bottom:0">Lock In Team ✓</button>
+            <button id="pickLoadLastBtn" onclick="loadLastTeam()" style="background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);padding:0.6rem 1rem;border-radius:10px;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap" title="Load picks from your previous round">Load last team</button>
+        </div>
         <div class="pick-status" id="pickStatus"></div>
         <div class="pick-slots" id="pickSlotsContainer"></div>
     </div>
@@ -1297,6 +1300,7 @@
                 <label style="font-size:0.85rem">Round:</label>
                 <select id="adminStatsRound" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.4rem;border-radius:6px;font-size:0.85rem" onchange="loadAdminStats()"></select>
                 <button onclick="calcAndSaveScores()" style="background:var(--accent);color:#000;border:none;padding:0.4rem 1rem;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;margin-left:auto">Calculate & Save Scores</button>
+                <button onclick="recalcFromDB()" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.4rem 0.85rem;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer" title="Recalculate scores from existing stats in DB (no stat entry needed)">↻ Recalc from DB</button>
             </div>
             <div style="overflow-x:auto">
                 <table id="adminStatsTable" style="width:100%;border-collapse:collapse;font-size:0.78rem">
@@ -2480,19 +2484,19 @@ async function calcAndSaveScores() {
     statusEl.style.color = 'var(--text-secondary)';
     statusEl.textContent = 'Saving stats...';
 
-    // Collect all non-zero stats from table
+    // Collect all stats from table inputs
     const inputs = document.querySelectorAll('.admin-stat-input');
-    const playerStatsMap = {}; // player_id → { goals, behinds, marks, tackles, hitouts, disposals }
+    const inputStatsMap = {};
     inputs.forEach(inp => {
         const pid = parseInt(inp.dataset.player);
         const stat = inp.dataset.stat;
         const val = parseFloat(inp.value) || 0;
-        if (!playerStatsMap[pid]) playerStatsMap[pid] = { goals:0, behinds:0, marks:0, tackles:0, hitouts:0, disposals:0 };
-        playerStatsMap[pid][stat] = val;
+        if (!inputStatsMap[pid]) inputStatsMap[pid] = { goals:0, behinds:0, marks:0, tackles:0, hitouts:0, disposals:0 };
+        inputStatsMap[pid][stat] = val;
     });
 
     // Only upsert rows where at least one stat > 0
-    const rows = Object.entries(playerStatsMap)
+    const rows = Object.entries(inputStatsMap)
         .filter(([,s]) => Object.values(s).some(v => v > 0))
         .map(([pid, s]) => ({ player_id: parseInt(pid), round_id: roundId, ...s }));
 
@@ -2503,30 +2507,53 @@ async function calcAndSaveScores() {
     }
 
     statusEl.textContent = `Stats saved (${rows.length} players). Calculating scores...`;
+    await recalcScoresForRound(roundId, statusEl);
+}
 
-    // Load all round_picks for this round
-    const { data: allPicks, error: picksErr } = await sb.from('round_picks')
-        .select('coach_id, player_id, slot').eq('round_id', roundId);
-    if (picksErr) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error loading picks: '+picksErr.message; return; }
+// Recalculate all coach scores for a round using stats already in player_round_stats
+async function recalcScoresForRound(roundId, statusEl) {
+    if (!statusEl) statusEl = { textContent:'', style:{color:''} };
+    statusEl.style.color = 'var(--text-secondary)';
+    statusEl.textContent = 'Fetching stats & picks...';
 
-    // Build per-coach score from their picks
+    // Fetch stats and picks in parallel
+    const [statsRes, picksRes] = await Promise.all([
+        sb.from('player_round_stats')
+            .select('player_id, goals, behinds, marks, tackles, hitouts, disposals')
+            .eq('round_id', roundId),
+        sb.from('round_picks')
+            .select('coach_id, player_id, slot')
+            .eq('round_id', roundId)
+    ]);
+
+    if (statsRes.error) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error loading stats: '+statsRes.error.message; return; }
+    if (picksRes.error) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error loading picks: '+picksRes.error.message; return; }
+
+    // Build stats lookup from DB (source of truth — includes all previously saved sessions)
+    const dbStatsMap = {};
+    (statsRes.data || []).forEach(s => { dbStatsMap[s.player_id] = s; });
+
+    // Build per-coach score
     const coachScores = {};
-    (allPicks || []).forEach(pick => {
+    (picksRes.data || []).forEach(pick => {
         if (!PICK_SCORING_SLOTS.includes(pick.slot)) return; // skip emergencies
-        const stats = playerStatsMap[pick.player_id];
+        const stats = dbStatsMap[pick.player_id];
         const pts = calcSlotScore(pick.slot, stats || {});
         if (!coachScores[pick.coach_id]) coachScores[pick.coach_id] = 0;
         coachScores[pick.coach_id] += (pts || 0);
     });
 
-    // Upsert scores for each coach that has picks
+    // Batch upsert all coach scores in one call
+    const scoreRows = Object.entries(coachScores).map(([coachIdStr, points]) => ({
+        coach_id: parseInt(coachIdStr), round_id: roundId, points
+    }));
+
     let saved = 0;
-    for (const [coachIdStr, points] of Object.entries(coachScores)) {
-        const coachId = parseInt(coachIdStr);
-        const { error } = await sb.from('scores')
-            .upsert({ coach_id: coachId, round_id: roundId, points },
-                    { onConflict: 'coach_id,round_id' });
-        if (!error) saved++;
+    if (scoreRows.length > 0) {
+        const { error: scoresErr } = await sb.from('scores')
+            .upsert(scoreRows, { onConflict: 'coach_id,round_id' });
+        if (scoresErr) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error saving scores: '+scoresErr.message; return; }
+        saved = scoreRows.length;
     }
 
     await loadAllData();
@@ -2536,8 +2563,15 @@ async function calcAndSaveScores() {
     loadAdminScores();
 
     statusEl.style.color = 'var(--accent)';
-    statusEl.textContent = `✓ Done! Stats saved, ${saved} coach scores updated.`;
+    statusEl.textContent = `✓ Done! ${saved} coach scores updated from $y(statsRes.data||[]).length} player stats.`;
     setTimeout(() => statusEl.textContent = '', 6000);
+}
+
+async function recalcFromDB() {
+    const roundId = parseInt(document.getElementById('adminStatsRound').value);
+    const statusEl = document.getElementById('adminStatsStatus');
+    if (isNaN(roundId)) { statusEl.textContent = 'Select a round first'; return; }
+    await recalcScoresForRound(roundId, statusEl);
 }
 
 // ========== REFRESH ==========
@@ -2676,6 +2710,8 @@ async function renderPickTeam() {
     roundLabel.textContent = `Round ${openRound.round_number} — ${statusLabel}`;
     lockedBar.style.display = pickIsLocked ? 'block' : 'none';
     submitBtn.style.display = pickIsLocked ? 'none' : 'block';
+    const loadLastBtn = document.getElementById('pickLoadLastBtn');
+    if (loadLastBtn) loadLastBtn.style.display = pickIsLocked ? 'none' : 'block';
 
     const { data: picks } = await sb.from('round_picks')
         .select('slot, player_id')
@@ -2812,6 +2848,49 @@ async function savePickTeam() {
         status.style.color = '#e74c3c';
         status.textContent = 'Error: ' + (e.message || 'Could not save picks');
     } finally { btn.disabled = false; updateSlotCount(); }
+}
+
+async function loadLastTeam() {
+    if (!currentCoach || !pickRoundId || pickIsLocked) return;
+    const status = document.getElementById('pickStatus');
+    status.style.color = 'var(--text-secondary)';
+    status.textContent = 'Loading last team...';
+
+    // Find the most recent round before this one with picks
+    const prevRounds = allRounds
+        .filter(r => r.id !== pickRoundId)
+        .sort((a, b) => b.round_number - a.round_number);
+
+    let lastPicks = null;
+    for (const r of prevRounds) {
+        const { data: picks } = await sb.from('round_picks')
+            .select('slot, player_id').eq('coach_id', currentCoach.id).eq('round_id', r.id);
+        if (picks && picks.length > 0) { lastPicks = picks; break; }
+    }
+
+    if (!lastPicks || lastPicks.length === 0) {
+        status.style.color = '#e67e22';
+        status.textContent = 'No previous team found';
+        setTimeout(() => status.textContent = '', 3000);
+        return;
+    }
+
+    // Only load slots for players still in this coach's squad
+    const myPlayerIds = new Set(allPlayers.filter(p => p.coach_id === currentCoach.id).map(p => p.id));
+    let loaded = 0;
+    lastPicks.forEach(p => {
+        if (p.slot && myPlayerIds.has(Number(p.player_id))) {
+            pickSlots[p.slot] = Number(p.player_id);
+            loaded++;
+        }
+    });
+
+    const myPlayers = allPlayers.filter(p => p.coach_id === currentCoach.id);
+    renderPickSlots(myPlayers);
+    updateSlotCount();
+    status.style.color = 'var(--accent)';
+    status.textContent = `✓ Loaded ${loaded} picks from last round`;
+    setTimeout(() => status.textContent = '', 4000);
 }
 
 // ========== AUTO-PICK TOGGLE ==========
