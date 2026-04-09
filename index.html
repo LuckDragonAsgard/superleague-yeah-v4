@@ -1483,7 +1483,7 @@ function renderCoachSelect() {
         const btn = document.createElement('div');
         btn.className = 'coach-select-btn';
         btn.dataset.id = c.id;
-        btn.innerHTML = `<div style="display:flex;justify-content:center;margin-bottom:0.2rem">${getJerseySVG(c.color, 28)}</div><span class="name">${c.name}</span>`;
+        btn.innerHTML = `<div style="display:flex;justify-content:center;margin-bottom:0.2rem">${getJerseyHTML(c, 28)}</div><span class="name">${c.name}</span>`;
         btn.addEventListener('click', () => {
             document.querySelectorAll('.coach-select-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
@@ -1579,7 +1579,7 @@ async function enterApp() {
     document.getElementById('mainApp').style.display = 'block';
 
     if (currentCoach) {
-        document.getElementById('userEmoji').innerHTML = getJerseySVG(currentCoach.color, 22);
+        document.getElementById('userEmoji').innerHTML = getJerseyHTML(currentCoach, 22);
         document.getElementById('userName').textContent = currentCoach.name;
         document.getElementById('chatInputArea').style.display = 'flex';
         document.getElementById('proposeTradeBtn').style.display = 'block';
@@ -1708,7 +1708,7 @@ function renderLadder() {
             <td><div class="rank-badge ${rankClass}">${l.rank}</div></td>
             <td>
                 <div class="coach-cell">
-                    <span style="display:inline-flex;align-items:center">${getJerseySVG(c.color, 30)}</span>
+                    <span style="display:inline-flex;align-items:center">${getJerseyHTML(c, 30)}</span>
                     <div>
                         <div class="coach-cell-name">${c.name}</div>
                         <div class="coach-cell-team">${c.team_name}</div>
@@ -1807,12 +1807,12 @@ function renderFixtures() {
                 ${m.match_name ? `<div class="match-name">🏆 ${m.match_name}</div>` : ''}
                 <div class="match-teams">
                     <div class="match-team ${!isLive && w1 ? 'winner' : ''} ${!isLive && !w1 ? 'loser' : ''}">
-                        <div class="match-team-name" style="display:flex;align-items:center;gap:0.3rem">${getJerseySVG(c1.color, 24)} ${c1.name}</div>
+                        <div class="match-team-name" style="display:flex;align-items:center;gap:0.3rem">${getJerseyHTML(c1, 24)} ${c1.name}</div>
                         <div class="match-score">${m.score1.toFixed(1)}</div>
                     </div>
                     <div class="match-vs">vs</div>
                     <div class="match-team ${!isLive && w2 ? 'winner' : ''} ${!isLive && !w2 ? 'loser' : ''}">
-                        <div class="match-team-name" style="display:flex;align-items:center;gap:0.3rem">${getJerseySVG(c2.color, 24)} ${c2.name}</div>
+                        <div class="match-team-name" style="display:flex;align-items:center;gap:0.3rem">${getJerseyHTML(c2, 24)} ${c2.name}</div>
                         <div class="match-score">${m.score2.toFixed(1)}</div>
                     </div>
                 </div>
@@ -1843,7 +1843,7 @@ function renderTeams() {
 
         card.innerHTML = `
             <div class="team-card-header">
-                <div class="team-card-emoji">${getJerseySVG(c.color, 44)}</div>
+                <div class="team-card-emoji">${getJerseyHTML(c, 44)}</div>
                 <div class="team-card-info">
                     <h3>${c.name}</h3>
                     <div class="team-name">${c.team_name}</div>
@@ -1870,7 +1870,7 @@ function openTeamModal(coachId) {
     const wins = scores.filter(s => s.result === 'W').length;
     const pf = scores.reduce((sum, s) => sum + parseFloat(s.points || 0), 0);
 
-    document.getElementById('modalEmoji').innerHTML = getJerseySVG(coach.color, 48);
+    document.getElementById('modalEmoji').innerHTML = getJerseyHTML(coach, 48);
     document.getElementById('modalCoachName').textContent = coach.name;
     document.getElementById('modalTeamName').textContent = coach.team_name;
     document.getElementById('modalStats').innerHTML = `
@@ -1914,7 +1914,7 @@ function handleSearch(e) {
                 <div style="font-weight:600">${p.name}</div>
                 <div style="font-size:0.75rem;color:var(--text-secondary)">${p.afl_team}</div>
             </div>
-            <div style="font-size:0.8rem;color:var(--accent)">${coach ? getJerseySVG(coach.color, 18) + ' ' + coach.name : 'Unassigned'}</div>
+            <div style="font-size:0.8rem;color:var(--accent)">${coach ? getJerseyHTML(coach, 18) + ' ' + coach.name : 'Unassigned'}</div>
         </div>`;
     }).join('');
 }
@@ -1945,7 +1945,7 @@ function renderChat() {
         const time = new Date(msg.created_at).toLocaleString('en-AU', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
         container.innerHTML += `
             <div class="chat-msg">
-                <div class="chat-msg-avatar" style="background:var(--bg-card);display:flex;align-items:center;justify-content:center">${coach ? getJerseySVG(coach.color, 28) : '🤖'}</div>
+                <div class="chat-msg-avatar" style="background:var(--bg-card);display:flex;align-items:center;justify-content:center">${coach ? getJerseyHTML(coach, 28) : '🤖'}</div>
                 <div class="chat-msg-content">
                     <div class="chat-msg-header">
                         <span class="chat-msg-name" style="color:${coach ? coach.color : 'var(--text-primary)'}">${coach ? coach.name : 'Unknown'}</span>
@@ -2034,12 +2034,12 @@ function renderTrades(filter = 'pending') {
             </div>
             <div class="trade-teams">
                 <div class="trade-side">
-                    <h4>${getJerseySVG(proposer.color, 22)} ${proposer.name} sends</h4>
+                    <h4>${getJerseyHTML(proposer, 22)} ${proposer.name} sends</h4>
                     ${outPlayers.map(p => `<span class="trade-player-chip">${p}</span>`).join('')}
                 </div>
                 <div class="trade-arrow">⇄</div>
                 <div class="trade-side">
-                    <h4>${getJerseySVG(target.color, 22)} ${target.name} sends</h4>
+                    <h4>${getJerseyHTML(target, 22)} ${target.name} sends</h4>
                     ${inPlayers.map(p => `<span class="trade-player-chip">${p}</span>`).join('')}
                 </div>
             </div>
@@ -2257,11 +2257,11 @@ function renderStats() {
                 <div class="award-title">Round ${round.round_number} Awards</div>
                 <div class="award-item">
                     <span class="award-label">MVP</span>
-                    <span class="award-value">${mvpCoach ? getJerseySVG(mvpCoach.color, 22) : ''} ${mvpCoach?.name || '?'} (${parseFloat(mvp.points)} pts)</span>
+                    <span class="award-value">${mvpCoach ? getJerseyHTML(mvpCoach, 22) : ''} ${mvpCoach?.name || '?'} (${parseFloat(mvp.points)} pts)</span>
                 </div>
                 <div class="award-item">
                     <span class="award-label">Wooden Spoon</span>
-                    <span class="award-value">${woodenCoach ? getJerseySVG(woodenCoach.color, 22) : ''} ${woodenCoach?.name || '?'} (${parseFloat(wooden.points)} pts)</span>
+                    <span class="award-value">${woodenCoach ? getJerseyHTML(woodenCoach, 22) : ''} ${woodenCoach?.name || '?'} (${parseFloat(wooden.points)} pts)</span>
                 </div>
             </div>
         `;
@@ -2314,7 +2314,7 @@ function loadAdminScores() {
         const pts = score ? parseFloat(score.points) : 0;
         grid.innerHTML += `
             <div class="admin-score-row">
-                <span style="display:inline-flex;align-items:center">${getJerseySVG(c.color, 24)}</span>
+                <span style="display:inline-flex;align-items:center">${getJerseyHTML(c, 24)}</span>
                 <span style="font-size:0.85rem">${c.name}</span>
                 <input type="number" step="0.5" class="admin-score-input" data-coach-id="${c.id}" value="${pts}">
             </div>
