@@ -28,6 +28,10 @@
             --win: #00ff88;
             --loss: #ff6b6b;
             --live: #ffd700;
+            /* Aliases used throughout inline styles */
+            --text: var(--text-primary);
+            --card: var(--bg-card);
+            --surface: var(--bg-input);
         }
 
         .light-mode {
@@ -1860,7 +1864,7 @@ function renderPicksMini(picks) {
         const isEmerg = slot.startsWith('E');
         const lastName = player ? (player.name || '').split(' ').slice(-1)[0] : '';
         const initials = player ? (player.name || '').split(' ').filter(Boolean).slice(0,2).map(n => n[0]).join('') : '?';
-        html += '<div style="text-align:center;min-width:36px;opacity:' + (isEmerg ? '0.65' : '1') + '"><div style="font-size:8px;color:var(--text-secondary);margin-bottom:2px">' + slot + '</div><div style="width:30px;height:30px;border-radius:50%;background:var(--surface);margin:0 auto;display:flex;align-items:center;justify-content:font-size:10px;color:var(--text-secondary);border:1px solid var(--border)">' + initials + '</div><div style="font-size:7px;color:var(--text);margin-top:2px;max-width:36px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (lastName || '-') + '</div></div>';
+        html += '<div style="text-align:center;min-width:36px;opacity:' + (isEmerg ? '0.65' : '1') + '"><div style="font-size:8px;color:var(--text-secondary);margin-bottom:2px">' + slot + '</div><div style="width:30px;height:30px;border-radius:50%;background:var(--surface);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-secondary);border:1px solid var(--border)">' + initials + '</div><div style="font-size:7px;color:var(--text);margin-top:2px;max-width:36px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (lastName || '-') + '</div></div>';
     });
     html += '</div>';
     return html;
@@ -2809,8 +2813,6 @@ async function togglePayment(coachId, newPaid, rowEl, name) {
     } catch(e) {
         if (status) status.textContent = 'Error saving';
     }
-}
-
 }
 
 async function recalcFromDB() {
