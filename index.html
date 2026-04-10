@@ -1532,7 +1532,7 @@ function getJerseyHTML(coach, size) {
     if (!coach) return '<span style="opacity:0.5">👤</span>';
     size = size || 32;
     if (coach.logo_url) {
-        return `<img src="${coach.logo_url}" width="${size}" height="${size}" style="object-fit:contain;display:inline-block;vertical-align:middle;mix-blend-mode:multiply;border-radius:4px" loading="lazy" alt="${coach.team_name||coach.name}">`;
+        return `<img src="${coach.logo_url}" width="${size}" height="${size}" style="object-fit:contain;display:inline-block;vertical-align:middle;border-radius:4px" loading="lazy" alt="${coach.team_name||coach.name}">`;
     }
     if (!coach.color) return '<span style="opacity:0.5">👤</span>';
     return getJerseySVG(coach.color, size);
