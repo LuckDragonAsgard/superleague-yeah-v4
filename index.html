@@ -1181,7 +1181,11 @@
     </div>
 
     <!-- PAGES -->
-    <div id="pageLadder" class="page active">
+    <div id="pageHome" class="page active">
+    <div class="section-title">🏉 Home</div>
+    <div id="homeContent"><div style="text-align:center;padding:2rem"><div class="spinner"></div><div style="margin-top:0.5rem;color:var(--text-secondary);font-size:0.85rem">Loading...</div></div></div>
+</div>
+<div id="pageLadder" class="page">
         <div class="section-title">📊 Ladder</div>
         <div style="overflow-x:auto">
             <table class="ladder-table">
@@ -1195,8 +1199,8 @@
                         <th>Pts</th>
                         <th class="hide-mobile">Avg</th>
                         <th class="hide-mobile">PF</th>
-                        <th class="hide-mobile">PA</th>
-                        <th class="hide-mobile">%</th>
+                        <th class="hide-mobile">L</th>
+                        <th class="hide-mobile">Win%</th>
                     </tr>
                 </thead>
                 <tbody id="ladderBody"></tbody>
@@ -1373,7 +1377,11 @@
         <div class="ticker-bar" id="tickerBar"><div class="ticker-track" id="tickerTrack"></div></div>
 <div class="countdown-bar" id="countdownBar">Next round locks in: <span class="countdown-time" id="countdownTime">--:--:--:--</span></div>
 <div class="nav-items">
-            <div class="nav-item active" data-page="pageLadder" onclick="switchPage('pageLadder', this)">
+            <div class="nav-item active" data-page="pageHome" onclick="switchPage('pageHome', this)">
+                <span class="nav-icon">🏠</span>
+                <span>Home</span>
+            </div>
+            <div class="nav-item" data-page="pageLadder" onclick="switchPage('pageLadder', this)">
                 <span class="nav-icon">📊</span>
                 <span>Ladder</span>
             </div>
@@ -1442,7 +1450,7 @@ let allMessages = [];
 let ladderData = [];
 let unreadMessages = 0;
 let unreadTrades = 0;
-let currentPage = 'pageLadder';
+let currentPage = 'pageHome';
 let isDark = true;
 
 // ========== INIT ==========
@@ -1693,6 +1701,7 @@ async function enterApp() {
         renderTrades();
         renderChat();
         renderStats(); initNewFeatures();
+        loadHomePage();
       loadAutoPickStatus();
         setupAdmin();
         setupRealtime();
@@ -1736,6 +1745,12 @@ function switchPage(pageId, el) {
     if (pageId === 'pagePickTeam') {
         renderPickTeam();
     }
+    if (pageId === 'pageDraft') {
+        loadDraftBoard();
+    }
+    if (pageId === 'pageHome') {
+        loadHomePage();
+    }
 }
 
 // ========== THEME ==========
@@ -1743,6 +1758,59 @@ function toggleTheme() {
     isDark = !isDark;
     document.body.classList.toggle('light-mode', !isDark);
     document.getElementById('themeToggle').textContent = isDark ? '🌙' : '☀️';
+}
+
+// ========== HOME PAGE ==========
+async function loadHomePage() {
+    const container = document.getElementById('homeContent');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:2rem"><div class="spinner"></div><div style="margin-top:0.5rem;color:var(--text-secondary);font-size:0.85rem">Loading...</div></div>';
+    const liveRound = allRounds.find(r => r.status === 'live')
+        || allRounds.find(r => r.status === 'upcoming')
+        || allRounds.slice().sort((a, b) => b.round_number - a.round_number)[0];
+    if (!liveRound) { container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-secondary)">Season not started yet.</div>'; return; }
+    let picks = [];
+    try { picks = (await apiFetch('/api/picks?round_id=' + liveRound.id)) || []; } catch(e) {}
+    const picksByCoach = {};
+    picks.forEach(p => { if (!picksByCoach[p.coach_id]) picksByCoach[p.coach_id] = []; picksByCoach[p.coach_id].push(p); });
+    const roundScores = allScores.filter(s => s.round_id === liveRound.id).sort((a, b) => parseFloat(b.points || 0) - parseFloat(a.points || 0));
+    const roundAvg = roundScores.length ? roundScores.reduce((s, r) => s + parseFloat(r.points || 0), 0) / roundScores.length : 0;
+    const statusColor = liveRound.status === 'live' ? 'var(--win)' : liveRound.status === 'completed' ? 'var(--text-secondary)' : 'var(--accent)';
+    const statusLabel = liveRound.status === 'live' ? '\u{1F534} LIVE' : liveRound.status === 'completed' ? '\u2705 Completed' : '\u{1F512} Locked';
+    let html = '<div style="background:var(--card);border-radius:14px;padding:1rem 1.2rem;margin-bottom:1rem;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:700;font-size:1.1rem;color:var(--text)">Round ' + liveRound.round_number + '</div>' + (liveRound.afl_round ? '<div style="font-size:0.75rem;color:var(--text-secondary)">AFL Round ' + liveRound.afl_round + '</div>' : '') + '</div><div style="color:' + statusColor + ';font-size:0.8rem;font-weight:600">' + statusLabel + '</div></div>';
+    if (roundScores.length > 0) {
+        html += '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Round ' + liveRound.round_number + ' Scores</div><div style="background:var(--card);border-radius:14px;border:1px solid var(--border);margin-bottom:1.2rem;overflow:hidden">';
+        roundScores.forEach((s, idx) => {
+            const coach = allCoaches.find(c => c.id === s.coach_id);
+            if (!coach) return;
+            const pts = parseFloat(s.points || 0);
+            const isMe = currentCoach && s.coach_id === currentCoach.id;
+            const aboveAvg = pts >= roundAvg;
+            html += '<div style="display:flex;align-items:center;padding:0.55rem 1rem;border-bottom:1px solid var(--border);' + (isMe ? 'background:rgba(0,168,107,0.08)' : '') + '"><span style="color:var(--text-secondary);font-size:0.75rem;width:1.6rem">' + (idx+1) + '.</span>' + getJerseyHTML(coach, 22) + '<span style="margin-left:0.5rem;flex:1;font-size:0.88rem;color:var(--text)">' + coach.name + '</span><span style="font-weight:700;font-size:0.9rem;color:' + (aboveAvg ? 'var(--win)' : 'var(--loss)') + '">' + pts.toFixed(1) + '</span></div>';
+        });
+        html += '</div>';
+    }
+    html += '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Round ' + liveRound.round_number + ' Teams</div>';
+    allCoaches.forEach(coach => {
+        const coachPicks = picksByCoach[coach.id] || [];
+        const hasSubmitted = coachPicks.length > 0;
+        html += '<div style="background:var(--card);border-radius:14px;padding:0.9rem 1rem;margin-bottom:0.6rem;border:1px solid var(--border)"><div style="display:flex;align-items:center;gap:0.6rem;' + (hasSubmitted ? 'margin-bottom:0.7rem' : '') + '">' + getJerseyHTML(coach, 28) + '<div style="flex:1"><div style="font-weight:600;color:var(--text);font-size:0.9rem">' + coach.name + '</div><div style="font-size:0.72rem;color:var(--text-secondary)">' + (coach.team_name || '') + '</div></div><div style="font-size:0.75rem;font-weight:600;' + (hasSubmitted ? 'color:var(--win)' : 'color:var(--loss)') + '">' + (hasSubmitted ? '\u2713 Team in' : '\u25CB Not yet') + '</div></div>' + (hasSubmitted ? renderPicksMini(coachPicks) : '') + '</div>';
+    });
+    container.innerHTML = html;
+}
+function renderPicksMini(picks) {
+    const SLOTS = ['SG','G1','G2','R','M','T','D1','D2','E1','E2','E3'];
+    let html = '<div style="display:flex;gap:3px;flex-wrap:wrap">';
+    SLOTS.forEach(slot => {
+        const pick = picks.find(p => p.slot === slot);
+        const player = pick ? allPlayers.find(p => p.id === pick.player_id) : null;
+        const isEmerg = slot.startsWith('E');
+        const lastName = player ? (player.name || '').split(' ').slice(-1)[0] : '';
+        const initials = player ? (player.name || '').split(' ').filter(Boolean).slice(0,2).map(n => n[0]).join('') : '?';
+        html += '<div style="text-align:center;min-width:36px;opacity:' + (isEmerg ? '0.65' : '1') + '"><div style="font-size:8px;color:var(--text-secondary);margin-bottom:2px">' + slot + '</div><div style="width:30px;height:30px;border-radius:50%;background:var(--surface);margin:0 auto;display:flex;align-items:center;justify-content:font-size:10px;color:var(--text-secondary);border:1px solid var(--border)">' + initials + '</div><div style="font-size:7px;color:var(--text);margin-top:2px;max-width:36px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (lastName || '-') + '</div></div>';
+    });
+    html += '</div>';
+    return html;
 }
 
 // ========== RENDER LADDER ==========
@@ -1779,7 +1847,8 @@ function renderLadder() {
                 return { result: myPts >= avg ? 'W' : 'L', pts: myPts, round: rnd?.round_number || '?' };
             });
             const wins = form.filter(f => f.result === 'W').length;
-            ladder.push({ coach: c, rank: 0, played: scores.length, wins, points_for: pf, points_against: 0, form, percentage: 0 });
+            const losses = scores.length - wins;
+            ladder.push({ coach: c, rank: 0, played: scores.length, wins, losses, points_for: pf, points_against: 0, form, percentage: 0 });
         });
         ladder.sort((a, b) => b.points_for - a.points_for);
         ladder.forEach((l, i) => l.rank = i + 1);
@@ -1789,10 +1858,10 @@ function renderLadder() {
         const c = l.coach;
         if (!c) return;
         const pf = parseFloat(l.points_for || 0);
-        const pa = parseFloat(l.points_against || 0);
+        const losses = l.losses !== undefined ? l.losses : (l.played - l.wins);
         const pts = pf;
         const avg = l.played > 0 ? (pf / l.played).toFixed(1) : '0.0';
-        const pct = pa > 0 ? ((pf / pa) * 100).toFixed(1) : '0.0';
+        const pct = l.played > 0 ? ((l.wins / l.played) * 100).toFixed(0) + '%' : '0%';
         const rankClass = l.rank <= 3 ? `rank-${l.rank}` : 'rank-other';
 
         const isMe = currentCoach && c.id === currentCoach.id;
@@ -1825,7 +1894,7 @@ function renderLadder() {
             <td class="pts-highlight">${pts.toFixed(1)}</td>
             <td class="hide-mobile">${avg}</td>
             <td class="hide-mobile">${pf.toFixed(1)}</td>
-            <td class="hide-mobile">${pa.toFixed(1)}</td>
+            <td class="hide-mobile">${losses}</td>
             <td class="hide-mobile">${pct}</td>
         `;
         tbody.appendChild(tr);
