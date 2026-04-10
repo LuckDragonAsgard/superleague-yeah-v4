@@ -1356,6 +1356,14 @@
             </div>
             <div id="pasteStatus" style="margin-top:0.75rem;font-size:0.8rem;color:var(--accent)"></div>
         </div>
+        <div class="admin-section" style="margin-top:1.5rem">
+            <h3 style="font-size:1rem;margin-bottom:0.5rem;color:var(--accent)">💰 Buy-Ins ($50)</h3>
+            <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.75rem">Track who has paid their $50 entry. Tap to toggle.</p>
+            <div id="paymentsGrid" style="display:grid;gap:0.5rem"></div>
+            <div id="paymentsStatus" style="margin-top:0.75rem;font-size:0.8rem;color:var(--accent)"></div>
+            <div id="paymentsSummary" style="margin-top:0.5rem;font-size:0.85rem;font-weight:600;color:var(--text-primary)"></div>
+        </div>
+
         <div class="admin-section">
             <h3>Auto-Pick My Team</h3>
             <div class="toggle-row">
@@ -2491,6 +2499,7 @@ function setupAdmin() {
         return;
     }
     document.getElementById('adminNav').style.display = '';
+    loadPayments();
 
     const selects = ['adminRoundSelect', 'adminPasteRound', 'adminStatsRound'];
     selects.forEach(selId => {
@@ -2714,6 +2723,49 @@ async function recalcScoresForRound(roundId, statusEl) {
     statusEl.style.color = 'var(--accent)';
     statusEl.textContent = `✓ Done! ${saved} coach scores updated from ${(Array.isArray(statsData) ? statsData : []).length} player stats.`;
     setTimeout(() => statusEl.textContent = '', 6000);
+}
+
+
+// ========== PAYMENTS / BUY-INS ==========
+async function loadPayments() {
+    const grid = document.getElementById('paymentsGrid');
+    const status = document.getElementById('paymentsStatus');
+    const summary = document.getElementById('paymentsSummary');
+    if (!grid) return;
+    status.textContent = 'Loading...';
+    try {
+        const data = await apiFetch('/api/payments');
+        grid.innerHTML = '';
+        let paidCount = 0;
+        (Array.isArray(data) ? data : []).forEach(p => {
+            if (p.paid) paidCount++;
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:var(--bg-input);border-radius:8px;cursor:pointer;border:2px solid ' + (p.paid ? 'var(--accent)' : 'var(--border)');
+            row.innerHTML = `<span style="font-size:1.1rem">${p.paid ? '✅' : '⬜'}</span>
+                <span style="flex:1;font-size:0.88rem;font-weight:600">${p.name}</span>
+                <span style="font-size:0.78rem;color:${p.paid ? 'var(--accent)' : 'var(--text-secondary)'};font-weight:${p.paid ? '600' : '400'}">${p.paid ? 'PAID $50' : 'Unpaid'}</span>`;
+            row.onclick = () => togglePayment(p.coach_id, !p.paid, row, p.name);
+            grid.appendChild(row);
+        });
+        status.textContent = '';
+        summary.textContent = `${paidCount} of ${data.length} paid — $${paidCount * 50} in the kitty`;
+    } catch(e) {
+        status.textContent = 'Error loading payments';
+    }
+}
+
+async function togglePayment(coachId, newPaid, rowEl, name) {
+    const status = document.getElementById('paymentsStatus');
+    status.textContent = `Updating ${name}...`;
+    try {
+        await apiFetch('/api/payments', { method: 'POST', body: JSON.stringify({ coach_id: coachId, paid: newPaid }) });
+        await loadPayments();
+        status.textContent = '';
+    } catch(e) {
+        status.textContent = 'Error saving';
+    }
+}
+
 }
 
 async function recalcFromDB() {
