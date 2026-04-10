@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1421,11 +1421,15 @@
 </div>
 
 <script>
-// ========== SUPABASE CONFIG ==========
-const SUPABASE_URL = 'https://cdrqimhigiylmcusdcqk.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkcnFpbWhpZ2l5bG1jdXNkY3FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDAyOTgsImV4cCI6MjA5MDg3NjI5OH0.m87Ldgdjpw5jwo7OndJUFa7e18rw3NonW3Bg_eEmdPI';
-
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ========== API CONFIG ==========
+const API = 'https://sly-api.pgallivan.workers.dev';
+async function apiFetch(path, opts={}) {
+    const res = await fetch(API + path, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', ...(opts.headers||{}) }
+    });
+    return res.json();
+}
 
 // ========== STATE ==========
 let currentCoach = null;
@@ -1537,34 +1541,31 @@ function getJerseyHTML(coach, size) {
 
 // ========== DATA LOADING ==========
 async function loadCoaches() {
-    const { data } = await sb.from('coaches').select('id, name, team_name, color, avatar_emoji, logo_url, created_at').order('id');
-    allCoaches = data || [];
+    const data = await apiFetch('/api/coaches');
+    allCoaches = Array.isArray(data) ? data : [];
 }
 
 async function loadAllData() {
-    const [playersRes, scoresRes, roundsRes, ladderRes, tradesRes, tradePlayers, messagesRes] = await Promise.all([
-        sb.from('players').select('*').order('name'),
-        sb.from('scores').select('*'),
-        sb.from('rounds').select('*').order('round_number'),
-        sb.from('ladder').select('*').order('rank'),
-        sb.from('trades').select('*').order('created_at', { ascending: false }),
-        sb.from('trade_players').select('*, players(name, afl_team)'),
-        sb.from('messages').select('*').order('created_at', { ascending: true }).limit(200)
+    const [players, scores, rounds, ladder, trades, messages] = await Promise.all([
+        apiFetch('/api/players'),
+        apiFetch('/api/scores'),
+        apiFetch('/api/rounds'),
+        apiFetch('/api/ladder'),
+        apiFetch('/api/trades'),
+        apiFetch('/api/messages')
     ]);
 
-    allPlayers = playersRes.data || [];
-    allScores = scoresRes.data || [];
-    allRounds = roundsRes.data || [];
-    ladderData = ladderRes.data || [];
-    allMessages = messagesRes.data || [];
+    allPlayers = (Array.isArray(players) ? players : []).map(p => ({...p, afl_team: p.afl_team || p.team}));
+    allScores = Array.isArray(scores) ? scores : [];
+    allRounds = Array.isArray(rounds) ? rounds : [];
+    ladderData = Array.isArray(ladder) ? ladder : [];
+    allMessages = Array.isArray(messages) ? messages : [];
 
-    // Assemble trades with players
-    const rawTrades = tradesRes.data || [];
-    const tp = tradePlayers.data || [];
-    allTrades = rawTrades.map(t => ({
+    // Trades already include trade_players from Worker
+    allTrades = (Array.isArray(trades) ? trades : []).map(t => ({
         ...t,
-        outgoing: tp.filter(p => p.trade_id === t.id && p.direction === 'outgoing'),
-        incoming: tp.filter(p => p.trade_id === t.id && p.direction === 'incoming')
+        outgoing: (t.trade_players || []).filter(p => p.direction === 'outgoing'),
+        incoming: (t.trade_players || []).filter(p => p.direction === 'incoming')
     }));
 }
 
@@ -1639,12 +1640,11 @@ async function attemptLogin() {
     const coachId = parseInt(selected.dataset.id);
     const pin = getEnteredPin();
 
-    // Validate PIN server-side (PIN never sent to client)
-    const { data: match, error } = await sb.from('coaches')
-        .select('id')
-        .eq('id', coachId)
-        .eq('pin', pin)
-        .maybeSingle();
+    // Validate PIN server-side
+    const { coach: match } = await apiFetch('/api/coaches/login', {
+        method: 'POST',
+        body: JSON.stringify({ coach_id: coachId, pin })
+    });
 
     if (match) {
         currentCoach = allCoaches.find(c => c.id === coachId);
@@ -1705,7 +1705,7 @@ async function enterApp() {
 
 function logout() {
     if (!confirm('Log out of Superleague Yeah?')) return;
-    sb.removeAllChannels();
+
     currentCoach = null;
     isGuest = false;
     localStorage.removeItem('sly_coach_id');
@@ -1987,17 +1987,17 @@ async function openTeamModal(coachId) {
     picksSection.style.display = 'none';
     document.getElementById('teamModal').classList.add('active'); // Show modal right away, picks load async
     if (liveOrLatest) {
-        const [picksRes, statsRes] = await Promise.all([
-            sb.from('round_picks').select('slot,player_id,coach_id').eq('coach_id', coachId).eq('round_id', liveOrLatest.id),
-            sb.from('player_round_stats').select('player_id,goals,behinds,marks,tackles,hitouts,disposals').eq('round_id', liveOrLatest.id)
+        const [picksData, allStats] = await Promise.all([
+            apiFetch(`/api/picks?coach_id=${coachId}&round_id=${liveOrLatest.id}`),
+            apiFetch(`/api/stats?round_id=${liveOrLatest.id}`)
         ]);
-        const coachPicks = picksRes.data || [];
+        const coachPicks = Array.isArray(picksData) ? picksData : [];
     if (coachPicks.length > 0) {
         picksTitle.textContent = `Round ${liveOrLatest.round_number} Picks`;
         const playerMap = {};
         allPlayers.forEach(p => { playerMap[p.id] = p; });
         const statsMap = {};
-        (statsRes.data || []).forEach(s => { statsMap[s.player_id] = s; });
+        (Array.isArray(allStats) ? allStats : []).forEach(s => { statsMap[s.player_id] = s; });
         let totalScore = 0;
         const rows = PICK_ALL_SLOTS.map(slot => {
             const pick = coachPicks.find(p => p.slot === slot);
@@ -2101,10 +2101,9 @@ async function sendMessage() {
     if (!text) return;
 
     input.value = '';
-    await sb.from('messages').insert({
-        coach_id: currentCoach.id,
-        content: text,
-        message_type: 'chat'
+    await apiFetch('/api/messages', {
+        method: 'POST',
+        body: JSON.stringify({ coach_id: currentCoach.id, content: text })
     });
 }
 
@@ -2155,8 +2154,8 @@ function renderTrades(filter = 'pending') {
         const card = document.createElement('div');
         card.className = 'trade-card';
 
-        const outPlayers = t.outgoing.map(p => p.players ? p.players.name : 'Unknown');
-        const inPlayers = t.incoming.map(p => p.players ? p.players.name : 'Unknown');
+        const outPlayers = t.outgoing.map(p => p.player_name || (p.players && p.players.name) || 'Unknown');
+        const inPlayers = t.incoming.map(p => p.player_name || (p.players && p.players.name) || 'Unknown');
 
         const canRespond = currentCoach && t.target_id === currentCoach.id && t.status === 'pending';
         const time = new Date(t.created_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -2251,31 +2250,22 @@ async function submitTrade() {
 
     const message = document.getElementById('tradeMessage').value.trim();
 
-    // Create trade
-    const { data: trade, error } = await sb.from('trades').insert({
-        proposer_id: currentCoach.id,
-        target_id: targetId,
-        status: 'pending',
-        message: message || null
-    }).select().single();
 
-    if (error || !trade) { alert('Error creating trade'); return; }
-
-    // Add trade players
-    const tradePlayers = [
-        ...myChecked.map(pid => ({ trade_id: trade.id, player_id: pid, direction: 'outgoing' })),
-        ...theirChecked.map(pid => ({ trade_id: trade.id, player_id: pid, direction: 'incoming' }))
-    ];
-
-    await sb.from('trade_players').insert(tradePlayers);
-
-    // Send system message
     const target = allCoaches.find(c => c.id === targetId);
-    await sb.from('messages').insert({
-        coach_id: currentCoach.id,
-        content: `${currentCoach.name} proposed a trade with ${target.name}!`,
-        message_type: 'system'
+    // Create trade with players and message in one call
+    const trade = await apiFetch('/api/trades', {
+        method: 'POST',
+        body: JSON.stringify({
+            trade: { proposer_id: currentCoach.id, target_id: targetId, message: message || null },
+            players: [
+                ...myChecked.map(pid => ({ player_id: pid, direction: 'outgoing' })),
+                ...theirChecked.map(pid => ({ player_id: pid, direction: 'incoming' }))
+            ],
+            message: { coach_id: currentCoach.id, content: `${currentCoach.name} proposed a trade with ${target.name}!` }
+        })
     });
+
+    if (!trade || !trade.id) { alert('Error creating trade'); return; }
 
     toggleTradeForm();
     await loadAllData();
@@ -2283,29 +2273,28 @@ async function submitTrade() {
 }
 
 async function respondTrade(tradeId, status) {
-    await sb.from('trades').update({
-        status,
-        resolved_at: new Date().toISOString()
-    }).eq('id', tradeId);
 
     const trade = allTrades.find(t => t.id === tradeId);
-    if (trade && status === 'accepted') {
-        // Swap players
-        for (const tp of trade.outgoing) {
-            await sb.from('players').update({ coach_id: trade.target_id }).eq('id', tp.player_id);
-        }
-        for (const tp of trade.incoming) {
-            await sb.from('players').update({ coach_id: trade.proposer_id }).eq('id', tp.player_id);
-        }
-    }
 
     const proposer = allCoaches.find(c => c.id === trade.proposer_id);
     const target = allCoaches.find(c => c.id === trade.target_id);
-    await sb.from('messages').insert({
-        coach_id: currentCoach.id,
-        content: `${target.name} ${status} the trade with ${proposer.name}!`,
-        message_type: 'system'
+
+    await apiFetch(`/api/trades/${tradeId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+            status,
+            message: { coach_id: currentCoach.id, content: `${target.name} ${status} the trade with ${proposer.name}!` }
+        })
     });
+
+    if (trade && status === 'accepted') {
+        for (const tp of trade.outgoing) {
+            await apiFetch(`/api/players/${tp.player_id}`, { method: 'PATCH', body: JSON.stringify({ coach_id: trade.target_id }) });
+        }
+        for (const tp of trade.incoming) {
+            await apiFetch(`/api/players/${tp.player_id}`, { method: 'PATCH', body: JSON.stringify({ coach_id: trade.proposer_id }) });
+        }
+    }
 
     await loadAllData();
     renderTrades('pending');
@@ -2467,8 +2456,8 @@ async function saveAdminScores() {
     for (const input of inputs) {
         const coachId = parseInt(input.dataset.coachId);
         const points = parseFloat(input.value);
-        const { error } = await sb.from('scores').update({ points }).eq('round_id', roundId).eq('coach_id', coachId);
-        if (!error) updated++;
+        await apiFetch('/api/scores', { method: 'POST', body: JSON.stringify({ coach_id: coachId, round_id: roundId, points }) });
+        updated++;
     }
 
     await loadAllData();
@@ -2498,8 +2487,8 @@ async function applyPastedScores() {
         if (isNaN(points)) { failed++; continue; }
         const coach = allCoaches.find(c => c.name.toLowerCase() === name.toLowerCase());
         if (!coach) { failed++; continue; }
-        const { error } = await sb.from('scores').update({ points }).eq('round_id', roundId).eq('coach_id', coach.id);
-        if (!error) updated++; else failed++;
+        await apiFetch('/api/scores', { method: 'POST', body: JSON.stringify({ coach_id: coach.id, round_id: roundId, points }) });
+        updated++;
     }
 
     await loadAllData();
@@ -2520,14 +2509,14 @@ async function loadAdminStats() {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--text-secondary)">Loading...</td></tr>';
 
     // Fetch stats and picks for this round in parallel
-    const [statsRes, picksRes] = await Promise.all([
-        sb.from('player_round_stats').select('*').eq('round_id', roundId),
-        sb.from('round_picks').select('player_id').eq('round_id', roundId)
+    const [statsData, picksData] = await Promise.all([
+        apiFetch(`/api/stats?round_id=${roundId}`),
+        apiFetch(`/api/picks?round_id=${roundId}`)
     ]);
     const statsMap = {};
-    (statsRes.data || []).forEach(s => statsMap[s.player_id] = s);
+    (Array.isArray(statsData) ? statsData : []).forEach(s => statsMap[s.player_id] = s);
     // Build set of player IDs that appear in any pick for this round
-    const pickedPlayerIds = new Set((picksRes.data || []).map(p => Number(p.player_id)));
+    const pickedPlayerIds = new Set((Array.isArray(picksData) ? picksData : []).map(p => Number(p.player_id)));
 
     // Sort: picked players first, then by afl_team then name
     const sorted = [...allPlayers].sort((a,b) => {
@@ -2585,9 +2574,7 @@ async function calcAndSaveScores() {
         .map(([pid, s]) => ({ player_id: parseInt(pid), round_id: roundId, ...s }));
 
     if (rows.length > 0) {
-        const { error: statsErr } = await sb.from('player_round_stats')
-            .upsert(rows, { onConflict: 'player_id,round_id' });
-        if (statsErr) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error saving stats: '+statsErr.message; return; }
+        await apiFetch('/api/stats', { method: 'POST', body: JSON.stringify(rows) });
     }
 
     statusEl.textContent = `Stats saved (${rows.length} players). Calculating scores...`;
@@ -2601,25 +2588,19 @@ async function recalcScoresForRound(roundId, statusEl) {
     statusEl.textContent = 'Fetching stats & picks...';
 
     // Fetch stats and picks in parallel
-    const [statsRes, picksRes] = await Promise.all([
-        sb.from('player_round_stats')
-            .select('player_id, goals, behinds, marks, tackles, hitouts, disposals')
-            .eq('round_id', roundId),
-        sb.from('round_picks')
-            .select('coach_id, player_id, slot')
-            .eq('round_id', roundId)
+    const [statsData, picksData] = await Promise.all([
+        apiFetch(`/api/stats?round_id=${roundId}`),
+        apiFetch(`/api/picks?round_id=${roundId}`)
     ]);
 
-    if (statsRes.error) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error loading stats: '+statsRes.error.message; return; }
-    if (picksRes.error) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error loading picks: '+picksRes.error.message; return; }
 
     // Build stats lookup from DB (source of truth — includes all previously saved sessions)
     const dbStatsMap = {};
-    (statsRes.data || []).forEach(s => { dbStatsMap[s.player_id] = s; });
+    (Array.isArray(statsData) ? statsData : []).forEach(s => { dbStatsMap[s.player_id] = s; });
 
     // Build per-coach score
     const coachScores = {};
-    (picksRes.data || []).forEach(pick => {
+    (Array.isArray(picksData) ? picksData : []).forEach(pick => {
         if (!PICK_SCORING_SLOTS.includes(pick.slot)) return; // skip emergencies
         const stats = dbStatsMap[pick.player_id];
         const pts = calcSlotScore(pick.slot, stats || {});
@@ -2634,9 +2615,7 @@ async function recalcScoresForRound(roundId, statusEl) {
 
     let saved = 0;
     if (scoreRows.length > 0) {
-        const { error: scoresErr } = await sb.from('scores')
-            .upsert(scoreRows, { onConflict: 'coach_id,round_id' });
-        if (scoresErr) { statusEl.style.color='#e74c3c'; statusEl.textContent='Error saving scores: '+scoresErr.message; return; }
+        await apiFetch('/api/scores', { method: 'POST', body: JSON.stringify(scoreRows) });
         saved = scoreRows.length;
     }
 
@@ -2676,45 +2655,27 @@ async function refreshData() {
     setTimeout(() => btn.style.animation = '', 800);
 }
 
-// ========== REALTIME ==========
+// ========== POLLING (replaces Supabase Realtime) ==========
 function setupRealtime() {
-    // Clean up existing channels before re-subscribing (prevents crash on re-login)
-    sb.removeAllChannels();
-
-    // Listen for new chat messages
-    sb.channel('messages')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-            const msg = payload.new;
-            allMessages.push(msg);
-            if (currentPage === 'pageChat') {
-                renderChat();
-            } else {
-                unreadMessages++;
-                const badge = document.getElementById('chatBadge');
-                badge.textContent = unreadMessages;
-                badge.style.display = 'block';
+    // Poll for new messages every 30 seconds
+    if (window.__pollInterval) clearInterval(window.__pollInterval);
+    window.__pollInterval = setInterval(async () => {
+        try {
+            const msgs = await apiFetch('/api/messages');
+            if (Array.isArray(msgs) && msgs.length > allMessages.length) {
+                const prevLen = allMessages.length;
+                allMessages = msgs;
+                if (currentPage === 'pageChat') {
+                    renderChat();
+                } else {
+                    unreadMessages += msgs.length - prevLen;
+                    const badge = document.getElementById('chatBadge');
+                    badge.textContent = unreadMessages;
+                    badge.style.display = 'block';
+                }
             }
-        })
-        .subscribe();
-
-    // Listen for trade updates
-    sb.channel('trades')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, async () => {
-            await loadAllData();
-            renderTrades();
-        })
-        .subscribe();
-
-    // Listen for score updates
-    sb.channel('scores')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, async () => {
-            await loadAllData();
-            renderLadder();
-            renderFixtures();
-            renderStats();
-            if (currentPage === 'pagePickTeam') updatePickScoreTotal();
-        })
-        .subscribe();
+        } catch(e) {}
+    }, 30000);
 
     // Auto-recalc scores every 5 min when a round is live
     if (window.__autoRecalcInterval) clearInterval(window.__autoRecalcInterval);
@@ -2732,7 +2693,7 @@ function initTicker(){var t=document.getElementById("tickerTrack");if(!t)return;
 function initCountdown(){var b=document.getElementById("countdownBar"),t=document.getElementById("countdownTime");if(!b||!t)return;function u(){var n=new Date(),l=new Date();l.setHours(19,20,0,0);var d=(4-n.getDay()+7)%7;if(d===0&&n>=l)d=7;l.setDate(l.getDate()+d);var df=l-n;if(df<=0||df>7*864e5){b.classList.remove("active");return}b.classList.add("active");var dd=Math.floor(df/864e5),hh=Math.floor(df%864e5/36e5),mm=Math.floor(df%36e5/6e4),ss=Math.floor(df%6e4/1e3);t.textContent=dd+"d "+String(hh).padStart(2,"0")+"h "+String(mm).padStart(2,"0")+"m "+String(ss).padStart(2,"0")+"s";b.style.background=df<36e5?"linear-gradient(135deg,#e74c3c,#c0392b)":df<864e5?"linear-gradient(135deg,#e67e22,#d35400)":"linear-gradient(135deg,var(--accent),#27ae60)"}u();setInterval(u,1000)}
 function initH2HSelects(){var s1=document.getElementById("h2hCoach1"),s2=document.getElementById("h2hCoach2");if(!s1||!s2||!window.allCoaches)return;var cs=window.allCoaches.slice().sort(function(a,b){return a.name.localeCompare(b.name)});var o=cs.map(function(c){return '<option value="'+c.id+'">'+c.name+(c.team_name?" - "+c.team_name:"")+'</option>'}).join("");s1.innerHTML=o;s2.innerHTML=o;if(cs.length>=2)s2.selectedIndex=1;if(window.currentCoach)s1.value=window.currentCoach.id;renderH2H()}
 function renderH2H(){var s1=document.getElementById("h2hCoach1"),s2=document.getElementById("h2hCoach2"),ct=document.getElementById("h2hResults");if(!s1||!s2||!ct)return;var i1=parseInt(s1.value),i2=parseInt(s2.value);if(i1===i2){ct.innerHTML='<div style="text-align:center;color:var(--text-secondary);padding:40px">Pick two different coaches!</div>';return}var cm={};(window.allCoaches||[]).forEach(function(c){cm[c.id]=c});var c1=cm[i1]||{name:"Coach 1"},c2=cm[i2]||{name:"Coach 2"};var sc=window.allScores||[],s1s=sc.filter(function(s){return s.coach_id===i1}),s2s=sc.filter(function(s){return s.coach_id===i2});var dm=[];s1s.filter(function(s){return s.opponent_id===i2}).forEach(function(s){var o=s2s.find(function(x){return x.round_id===s.round_id&&x.opponent_id===i1});dm.push({r:s.round_id,p1:s.points,p2:o?o.points:0,res:s.result})});var tp1=s1s.reduce(function(a,x){return a+(x.points||0)},0),tp2=s2s.reduce(function(a,x){return a+(x.points||0)},0);var w1=s1s.filter(function(s){return s.result==="W"}).length,w2=s2s.filter(function(s){return s.result==="W"}).length;var a1=s1s.length?(tp1/s1s.length).toFixed(1):"0",a2=s2s.length?(tp2/s2s.length).toFixed(1):"0";var b1=s1s.length?Math.max.apply(null,s1s.map(function(s){return s.points||0})).toFixed(1):"0",b2=s2s.length?Math.max.apply(null,s2s.map(function(s){return s.points||0})).toFixed(1):"0";var wo1=s1s.length?Math.min.apply(null,s1s.map(function(s){return s.points||0})).toFixed(1):"0",wo2=s2s.length?Math.min.apply(null,s2s.map(function(s){return s.points||0})).toFixed(1):"0";var hw1=dm.filter(function(m){return m.res==="W"}).length,hw2=dm.filter(function(m){return m.res==="L"}).length,hd=dm.filter(function(m){return m.res==="D"}).length;var ld=window.ladderData||[];var p1=ld.findIndex(function(l){return l.coach_id===i1})+1||"-",p2=ld.findIndex(function(l){return l.coach_id===i2})+1||"-";function sr(l,v1,v2){return '<div class="h2h-stat-row"><span class="h2h-stat-val left'+(parseFloat(v1)>parseFloat(v2)?" winner":"")+'">'+v1+'</span><span class="h2h-stat-label">'+l+'</span><span class="h2h-stat-val right'+(parseFloat(v2)>parseFloat(v1)?" winner":"")+'">'+v2+'</span></div>'}var h='<div class="h2h-card"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="font-weight:700;color:var(--text)">'+c1.name+'</span><span style="font-weight:700;color:var(--text)">'+c2.name+'</span></div>'+sr("Ladder Position",p1,p2)+sr("Season Record",w1+"W",w2+"W")+sr("Total Points",tp1.toFixed(1),tp2.toFixed(1))+sr("Average Score",a1,a2)+sr("Best Score",b1,b2)+sr("Worst Score",wo1,wo2);if(dm.length>0)h+=sr("H2H Record",hw1+"W "+hd+"D",hw2+"W "+hd+"D");h+="</div>";if(s1s.length>0||s2s.length>0){h+='<div class="h2h-card"><div style="font-weight:700;margin-bottom:8px;color:var(--text)">Round by Round</div>';var ar=[].concat(s1s.map(function(s){return s.round_id}),s2s.map(function(s){return s.round_id})).filter(function(v,i,a){return a.indexOf(v)===i}).sort(function(a,b){return a-b});ar.forEach(function(r){var a=s1s.find(function(s){return s.round_id===r}),b=s2s.find(function(s){return s.round_id===r});var v1=a?a.points.toFixed(1):"-",v2=b?b.points.toFixed(1):"-",id=a&&a.opponent_id===i2;h+='<div class="h2h-round-row"><span class="h2h-stat-val left'+(parseFloat(v1)>parseFloat(v2)?" winner":"")+'">'+v1+'</span><span class="h2h-round-label">R'+r+(id?" \u2694\ufe0f":"")+'</span><span class="h2h-stat-val right'+(parseFloat(v2)>parseFloat(v1)?" winner":"")+'">'+v2+'</span></div>'});h+="</div>"}if(dm.length===0)h+='<div style="text-align:center;color:var(--text-secondary);padding:12px;font-size:13px">No direct H2H matchups yet this season</div>';ct.innerHTML=h}
-async function loadDraftBoard(){var ct=document.getElementById("draftBoard"),fd=document.getElementById("draftFilter");if(!ct)return;var r=await sb.from("players").select("*").order("draft_pick",{ascending:true});var p=r.data;if(!p||p.length===0){ct.innerHTML='<div style="padding:30px;text-align:center;color:var(--text-secondary)"><div style="font-size:14px;margin-bottom:12px">Draft board not yet available</div><div style="font-size:12px">Check back when draft picks are being tracked. Use the filters below to organize picks by round or coach.</div>';return}window.draftPicks=p;var f='<button class="draft-filter-btn active" onclick="filterDraft(null,this)">All Picks</button>';if(window.currentCoach)f+='<button class="draft-filter-btn" onclick="filterDraft('+window.currentCoach.id+',this)">My Picks</button>';f+='<button class="draft-filter-btn" onclick="filterDraft(\'early\',this)">Early Rounds</button><button class="draft-filter-btn" onclick="filterDraft(\'late\',this)">Late Rounds</button>';fd.innerHTML=f;renderDraftBoard(p,null)}
+async function loadDraftBoard(){var ct=document.getElementById("draftBoard"),fd=document.getElementById("draftFilter");if(!ct)return;var p=allPlayers.slice().sort(function(a,b){return (a.draft_pick||9999)-(b.draft_pick||9999)});if(!p||p.length===0){ct.innerHTML='<div style="padding:30px;text-align:center;color:var(--text-secondary)"><div style="font-size:14px;margin-bottom:12px">Draft board not yet available</div><div style="font-size:12px">Check back when draft picks are being tracked. Use the filters below to organize picks by round or coach.</div>';return}window.draftPicks=p;var f='<button class="draft-filter-btn active" onclick="filterDraft(null,this)">All Picks</button>';if(window.currentCoach)f+='<button class="draft-filter-btn" onclick="filterDraft('+window.currentCoach.id+',this)">My Picks</button>';f+='<button class="draft-filter-btn" onclick="filterDraft(\'early\',this)">Early Rounds</button><button class="draft-filter-btn" onclick="filterDraft(\'late\',this)">Late Rounds</button>';fd.innerHTML=f;renderDraftBoard(p,null)}
 function filterDraft(f,b){document.querySelectorAll(".draft-filter-btn").forEach(function(x){x.classList.remove("active")});if(b)b.classList.add("active");renderDraftBoard(window.draftPicks,f)}
 function renderDraftBoard(picks,filter){var ct=document.getElementById("draftBoard");if(!picks||!ct)return;var cm={};(window.allCoaches||[]).forEach(function(c){cm[c.id]=c});var my=window.currentCoach?window.currentCoach.id:null;var f=picks.filter(function(p){return p.draft_pick&&p.draft_pick>0});if(filter==="early")f=f.filter(function(p){return p.draft_pick<=48});else if(filter==="late")f=f.filter(function(p){return p.draft_pick>160});else if(typeof filter==="number")f=f.filter(function(p){return p.coach_id===filter});var rds={};f.forEach(function(p){var r=Math.ceil(p.draft_pick/16);if(!rds[r])rds[r]=[];rds[r].push(p)});var h="";Object.keys(rds).sort(function(a,b){return a-b}).forEach(function(r){h+='<div class="draft-round-header">Round '+r+'</div>';rds[r].forEach(function(p){var c=cm[p.coach_id];h+='<div class="draft-pick'+(p.coach_id===my?" mine":"")+'"><span class="draft-pick-num">#'+p.draft_pick+'</span><span class="draft-pick-player">'+(p.first_name||"")+" "+(p.last_name||p.name||"")+'</span><span class="draft-pick-team">'+(c?c.name:"Coach "+p.coach_id)+'</span></div>'})});if(!h)h='<div style="padding:20px;text-align:center;color:var(--text-secondary)">No picks to show</div>';ct.innerHTML=h}
 function openExportModal(){document.getElementById("exportModal").classList.add("active")}
@@ -2811,21 +2772,17 @@ async function renderPickTeam() {
     // Countdown timer (uses lock_time if set on round)
     startPickCountdown(openRound);
 
-    const { data: picks } = await sb.from('round_picks')
-        .select('slot, player_id')
-        .eq('coach_id', currentCoach.id)
-        .eq('round_id', pickRoundId);
+    const picks = await apiFetch(`/api/picks?coach_id=${currentCoach.id}&round_id=${pickRoundId}`);
 
     pickSlots = {};
-    (picks || []).forEach(p => { if (p.slot) pickSlots[p.slot] = Number(p.player_id); });
+    (Array.isArray(picks) ? picks : []).forEach(p => { if (p.slot) pickSlots[p.slot] = Number(p.player_id); });
 
     const myPlayers = allPlayers.filter(p => p.coach_id === currentCoach.id);
     pickRoundStats = {};
     if (myPlayers.length > 0) {
-        const { data: stats } = await sb.from('player_round_stats')
-            .select('*').eq('round_id', pickRoundId)
-            .in('player_id', myPlayers.map(p => p.id));
-        (stats || []).forEach(s => { pickRoundStats[s.player_id] = s; });
+        const stats = await apiFetch(`/api/stats?round_id=${pickRoundId}`);
+        const myPlayerIds = new Set(myPlayers.map(p => p.id));
+        (Array.isArray(stats) ? stats : []).filter(s => myPlayerIds.has(s.player_id)).forEach(s => { pickRoundStats[s.player_id] = s; });
     }
 
     renderPickSlots(myPlayers);
@@ -2974,13 +2931,11 @@ async function savePickTeam() {
     btn.disabled = true; btn.textContent = 'Saving...';
     status.style.color = 'var(--text-secondary)'; status.textContent = '';
     try {
-        await sb.from('round_picks').delete()
-            .eq('coach_id', currentCoach.id).eq('round_id', pickRoundId);
+        await apiFetch(`/api/picks?coach_id=${currentCoach.id}&round_id=${pickRoundId}`, { method: 'DELETE' });
         const rows = Object.entries(pickSlots).filter(([,pid])=>pid)
             .map(([slot,pid]) => ({ coach_id: currentCoach.id, round_id: pickRoundId, player_id: pid, slot }));
         if (rows.length > 0) {
-            const { error } = await sb.from('round_picks').insert(rows);
-            if (error) throw error;
+            await apiFetch('/api/picks', { method: 'POST', body: JSON.stringify(rows) });
         }
         const now = new Date().toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
         status.style.color = 'var(--accent)';
@@ -3004,9 +2959,8 @@ async function loadLastTeam() {
 
     let lastPicks = null;
     for (const r of prevRounds) {
-        const { data: picks } = await sb.from('round_picks')
-            .select('slot, player_id').eq('coach_id', currentCoach.id).eq('round_id', r.id);
-        if (picks && picks.length > 0) { lastPicks = picks; break; }
+        const picks = await apiFetch(`/api/picks?coach_id=${currentCoach.id}&round_id=${r.id}`);
+        if (Array.isArray(picks) && picks.length > 0) { lastPicks = picks; break; }
     }
 
     if (!lastPicks || lastPicks.length === 0) {
@@ -3037,7 +2991,7 @@ async function loadLastTeam() {
     // ========== AUTO-PICK TOGGLE ==========
     async function loadAutoPickStatus() {
       try {
-        const { data } = await sb.from('config').select('value').eq('key', 'auto_pick_enabled').single();
+        const data = await apiFetch('/api/config?key=auto_pick_enabled');
         const toggle = document.getElementById('autoPickToggle');
         if (toggle) toggle.checked = data && data.value === 'true';
       } catch(e) { console.warn('Could not load auto-pick status', e); }
@@ -3048,14 +3002,9 @@ async function loadLastTeam() {
       statusEl.style.display = 'block';
       statusEl.textContent = enabled ? 'Enabling auto-pick...' : 'Disabling auto-pick...';
       try {
-        const { error } = await sb.from('config').upsert({ key: 'auto_pick_enabled', value: enabled ? 'true' : 'false', updated_at: new Date().toISOString() }, { onConflict: 'key' });
-        if (!error) {
-          statusEl.textContent = enabled ? 'Auto-pick ON - your team will be optimised before each round' : 'Auto-pick OFF - set your lineup manually';
-          statusEl.style.color = enabled ? 'var(--accent)' : 'var(--text-secondary)';
-        } else {
-          statusEl.textContent = 'Error: ' + error.message;
-          statusEl.style.color = '#e74c3c';
-        }
+        await apiFetch('/api/config', { method: 'POST', body: JSON.stringify({ key: 'auto_pick_enabled', value: enabled ? 'true' : 'false' }) });
+        statusEl.textContent = enabled ? 'Auto-pick ON - your team will be optimised before each round' : 'Auto-pick OFF - set your lineup manually';
+        statusEl.style.color = enabled ? 'var(--accent)' : 'var(--text-secondary)';
       } catch(e) {
         statusEl.textContent = 'Failed to update: ' + e.message;
         statusEl.style.color = '#e74c3c';
