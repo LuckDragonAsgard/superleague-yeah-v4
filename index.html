@@ -2069,7 +2069,8 @@ function getJerseyHTML(coach, size) {
     if (!coach) return '<span style="opacity:0.5">👤</span>';
     size = size || 32; size = Math.round(size * 1.5);
     if (coach.logo_url) {
-        return `<img src="${coach.logo_url}" width="${size}" height="${size}" style="object-fit:contain;display:inline-block;vertical-align:middle;border-radius:4px;background:transparent;max-width:${size}px;flex-shrink:0" alt="" onerror="this.style.display='none'">`;
+        const fallbackColor = coach.color || '#888888';
+        return `<img src="${coach.logo_url}" width="${size}" height="${size}" style="object-fit:contain;display:inline-block;vertical-align:middle;border-radius:4px;background:transparent;max-width:${size}px;flex-shrink:0" alt="" onerror="this.outerHTML=getJerseySVG('${fallbackColor}',${size})">`;
     }
     if (!coach.color) return '<span style="opacity:0.5">👤</span>';
     return getJerseySVG(coach.color, size);
@@ -2961,8 +2962,12 @@ function renderStats() {
     const grid = document.getElementById('statsGrid');
     grid.innerHTML = '';
 
-    // Calculate stats — filter out null/missing scores
-    const completedScores = allScores.filter(s => s.points != null && !isNaN(parseFloat(s.points)));
+    // Calculate stats — filter out null/missing scores and Round 0 (pre-season/test data)
+    const completedScores = allScores.filter(s => {
+        if (s.points == null || isNaN(parseFloat(s.points))) return false;
+        const round = allRounds.find(r => r.id == s.round_id);
+        return round && round.round_number > 0;
+    });
     const allPoints = completedScores.map(s => parseFloat(s.points));
 
     if (allPoints.length === 0) {
@@ -2985,7 +2990,7 @@ function renderStats() {
 
     // Biggest blowout
     let biggestMargin = 0, biggestMatch = '';
-    allRounds.filter(r => r.status === 'completed').forEach(round => {
+    allRounds.filter(r => r.status === 'completed' && r.round_number > 0).forEach(round => {
         const roundScores = allScores.filter(s => s.round_id === round.id);
         const processed = new Set();
         roundScores.forEach(s => {
@@ -4155,13 +4160,20 @@ async function loadLastTeam() {
         });
         feedHtml += '</div>';
 
+        const existing = homeContent.querySelector('.activity-feed');
+        if (existing) existing.parentElement?.querySelector('.activity-feed-header')?.remove(), existing.remove();
+
+        if (activities.length === 0) return;
+
         const feedContainer = homeContent.querySelector('[id*="feed"]') || homeContent.querySelector('[id*="recent"]');
         if (feedContainer) {
             feedContainer.innerHTML = feedHtml;
         } else {
             const scoreList = homeContent.querySelector('ul') || homeContent.querySelector('.score-list');
             if (scoreList) {
-                scoreList.insertAdjacentHTML('beforebegin', '<h3 style="margin:1rem 0 0.5rem;color:var(--text)">Recent Activity</h3>' + feedHtml);
+                scoreList.insertAdjacentHTML('beforebegin', '<h3 class="activity-feed-header" style="margin:1rem 0 0.5rem;color:var(--text)">📋 Recent Activity</h3>' + feedHtml);
+            } else {
+                homeContent.insertAdjacentHTML('beforeend', '<h3 class="activity-feed-header" style="margin:1rem 0 0.5rem;padding:0 1rem;color:var(--text)">📋 Recent Activity</h3>' + feedHtml);
             }
         }
     }
@@ -4384,72 +4396,56 @@ async function loadLastTeam() {
         const tradesPage = document.getElementById('pageTrades');
         if (!tradesPage || !currentCoach) return;
 
-        const isPremium = (await checkPremiumStatus(currentCoach.id)).catch(() => false);
-        if (!isPremium) return;
+        const existingSugg = tradesPage.querySelector('.auto-trade-panel');
+        if (existingSugg) existingSugg.remove();
 
-        const suggestions = [];
         const myPlayers = allPlayers.filter(p => p.coach_id === currentCoach.id);
         const freeAgents = allPlayers.filter(p => !p.coach_id || p.coach_id === null);
+        if (myPlayers.length === 0 || freeAgents.length === 0) return;
 
-        const slotStats = {};
+        const playerScore = (playerId) =>
+            allScores.filter(s => s.player_id === playerId).reduce((sum, sc) => sum + (parseFloat(sc.points) || 0), 0);
+
+        const suggestions = [];
         ['G', 'M', 'D', 'R', 'T'].forEach(pos => {
-            const posPlayers = myPlayers.filter(p => p.position === pos);
-            const avgScore = posPlayers.length > 0 ? posPlayers.reduce((sum, p) => {
-                const scores = allScores.filter(s => s.player_id === p.id);
-                return sum + (scores.length > 0 ? scores.reduce((s, sc) => s + (sc.points || 0), 0) / scores.length : 0);
-            }, 0) / posPlayers.length : 0;
-            slotStats[pos] = { avg: avgScore, players: posPlayers };
+            const myPosPlayers = myPlayers.filter(p => p.position === pos);
+            const freePosPlayers = freeAgents.filter(p => p.position === pos);
+            if (myPosPlayers.length === 0 || freePosPlayers.length === 0) return;
+            const worst = myPosPlayers.reduce((a, b) => playerScore(a.id) <= playerScore(b.id) ? a : b);
+            const best = freePosPlayers.reduce((a, b) => playerScore(a.id) >= playerScore(b.id) ? a : b);
+            const gain = playerScore(best.id) - playerScore(worst.id);
+            if (gain > 0) suggestions.push({ out: worst, in: best, pos, gain });
         });
-
-        ['G', 'M', 'D'].forEach(pos => {
-            if (slotStats[pos].avg < 20) {
-                const potentialReplacements = freeAgents.filter(p => p.position === pos);
-                const worstPlayer = slotStats[pos].players.reduce((prev, curr) => {
-                    const prevScore = allScores.filter(s => s.player_id === prev.id).reduce((s, sc) => s + (sc.points || 0), 0) || 0;
-                    const currScore = allScores.filter(s => s.player_id === curr.id).reduce((s, sc) => s + (sc.points || 0), 0) || 0;
-                    return currScore < prevScore ? curr : prev;
-                });
-
-                const bestReplacement = potentialReplacements.reduce((prev, curr) => {
-                    const prevScore = allScores.filter(s => s.player_id === prev.id).reduce((s, sc) => s + (sc.points || 0), 0) || 0;
-                    const currScore = allScores.filter(s => s.player_id === curr.id).reduce((s, sc) => s + (sc.points || 0), 0) || 0;
-                    return currScore > prevScore ? curr : prev;
-                });
-
-                if (bestReplacement) {
-                    const expectedBenefit = 5;
-                    suggestions.push({
-                        out: worstPlayer,
-                        in: bestReplacement,
-                        benefit: expectedBenefit
-                    });
-                }
-            }
-        });
+        suggestions.sort((a, b) => b.gain - a.gain);
 
         if (suggestions.length === 0) return;
 
-        let html = '<div style="margin-top:1.5rem;padding:1rem;background:var(--bg-card);border-radius:12px;border:2px solid var(--accent);"><h3 style="margin:0 0 1rem;color:var(--accent)">⚡ Premium Trade Suggestions</h3>';
+        const roundsPlayed = [...new Set(allScores.map(s => s.round_id))].length || 1;
+        let html = '<div class="auto-trade-panel" style="margin-top:1.5rem;padding:1rem;background:var(--bg-card);border-radius:12px;border:2px solid var(--accent);">';
+        html += '<h3 style="margin:0 0 1rem;color:var(--accent)">⚡ Trade Suggestions</h3>';
 
         suggestions.slice(0, 5).forEach(sug => {
+            const avgGain = (sug.gain / roundsPlayed).toFixed(1);
             html += `<div class="suggestion-card">
                 <div class="suggestion-header">
-                    <div class="suggestion-title">Strengthen ${sug.in.position} Position</div>
-                    <div class="suggestion-benefit">+${sug.benefit.toFixed(1)} pts/round</div>
+                    <div class="suggestion-title">Upgrade ${sug.pos} position</div>
+                    <div class="suggestion-benefit">+${avgGain} pts/round avg</div>
                 </div>
                 <div class="suggestion-swap">
-                    <span class="swap-player-out">${sug.out.name}</span>
-                    <span>→</span>
-                    <span class="swap-player-in">${sug.in.name}</span>
+                    <span class="swap-player-out">↓ ${sug.out.name}</span>
+                    <span style="color:var(--accent)">→</span>
+                    <span class="swap-player-in">↑ ${sug.in.name}</span>
                 </div>
             </div>`;
         });
 
         html += '</div>';
 
-        const tradesContent = tradesPage.querySelector('[id*="trades"]') || tradesPage.firstElementChild;
-        if (tradesContent) {
-            tradesContent.insertAdjacentHTML('beforebegin', html);
+        const tradeFilterBar = tradesPage.querySelector('.trade-filter-bar') || tradesPage.querySelector('[onclick*="filterTrades"]')?.parentElement;
+        if (tradeFilterBar) {
+            tradeFilterBar.insertAdjacentHTML('beforebegin', html);
+        } else {
+            tradesPage.insertAdjacentHTML('beforeend', html);
         }
     }
 
