@@ -1216,6 +1216,7 @@
 
     <div id="pageFixtures" class="page">
         <div class="section-title">📅 Fixtures</div>
+        <div id="fixturesRoundNav" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap"></div>
         <div id="fixturesContent"></div>
     </div>
 
@@ -1593,9 +1594,9 @@ function getJerseySVG(color, size) {
 
 function getJerseyHTML(coach, size) {
     if (!coach) return '<span style="opacity:0.5">👤</span>';
-    size = size || 32; size = Math.round(size * 1.5); size = Math.round(size * 1.5);
+    size = size || 32; size = Math.round(size * 1.5);
     if (coach.logo_url) {
-        return `<img src="${coach.logo_url}" width="${size}" height="${size}" style="object-fit:contain;display:inline-block;vertical-align:middle;border-radius:4px;background:transparent" alt="${coach.team_name||coach.name}">`;
+        return `<img src="${coach.logo_url}" width="${size}" height="${size}" style="object-fit:contain;display:inline-block;vertical-align:middle;border-radius:4px;background:transparent;max-width:${size}px;flex-shrink:0" alt="" onerror="this.style.display='none'">`;
     }
     if (!coach.color) return '<span style="opacity:0.5">👤</span>';
     return getJerseySVG(coach.color, size);
@@ -1965,9 +1966,12 @@ function renderLadder() {
 }
 
 // ========== RENDER FIXTURES ==========
+let fixturesSelectedRound = null;
 function renderFixtures() {
     const container = document.getElementById('fixturesContent');
     container.innerHTML = '';
+    const nav = document.getElementById('fixturesRoundNav');
+    nav.innerHTML = '';
 
     // Show each round as a sorted points scoreboard
     const roundsWithScores = allRounds
@@ -1979,7 +1983,24 @@ function renderFixtures() {
         return;
     }
 
-    roundsWithScores.forEach(round => {
+    // Default to most recent round
+    if (!fixturesSelectedRound || !roundsWithScores.find(r => r.id === fixturesSelectedRound)) {
+        fixturesSelectedRound = roundsWithScores[0].id;
+    }
+
+    // Round navigation pills
+    roundsWithScores.forEach(r => {
+        const pill = document.createElement('button');
+        pill.textContent = `R${r.round_number}`;
+        pill.className = r.id === fixturesSelectedRound ? 'filter-btn active' : 'filter-btn';
+        pill.onclick = () => { fixturesSelectedRound = r.id; renderFixtures(); };
+        nav.appendChild(pill);
+    });
+
+    // Show only the selected round
+    const roundsToShow = roundsWithScores.filter(r => r.id === fixturesSelectedRound);
+
+    roundsToShow.forEach(round => {
         const section = document.createElement('div');
         section.className = 'round-section';
         const isLive = round.status === 'live';
@@ -2017,9 +2038,9 @@ function renderFixtures() {
             card.innerHTML = `
                 <div class="match-teams" style="align-items:center">
                     <div class="match-team" style="flex:1">
-                        <div class="match-team-name" style="display:flex;align-items:center;gap:0.4rem">
-                            <span style="color:var(--text-secondary);font-size:0.75rem;min-width:1.2rem">${idx + 1}.</span>
-                            ${getJerseyHTML(coach, 24)} ${coach.name}
+                        <div class="match-team-name" style="display:flex;align-items:center;gap:0.4rem;overflow:hidden;min-width:0">
+                            <span style="color:var(--text-secondary);font-size:0.75rem;min-width:1.2rem;flex-shrink:0">${idx + 1}.</span>
+                            ${getJerseyHTML(coach, 24)} <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${coach.name}</span>
                         </div>
                         <div style="font-size:0.7rem;color:var(--text-secondary)">${coach.team_name}</div>
                     </div>
