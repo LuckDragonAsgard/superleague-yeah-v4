@@ -470,6 +470,8 @@
         .ladder-view.active { display: block; }
 
         /* ========== EXTENDED LADDER COLUMNS ========== */
+        .ladder-view { display: none; }
+        .ladder-view.active { display: block; }
         .ladder-table-extended {
             width: 100%;
             border-collapse: collapse;
@@ -1653,7 +1655,7 @@
 <div id="pageLadder" class="page">
         <div class="section-title">📊 Ladder <span id="liveRoundBadge" class="live-tag" style="display:none">🔴 LIVE</span></div>
         <div id="lastUpdatedBar" style="font-size:0.72rem;color:var(--text-secondary);margin-bottom:0.5rem;text-align:right;opacity:0.7"></div>
-        <div style="overflow-x:auto">
+        <div style="overflow-x:auto" class="ladder-view ladder-brief active">
             <table class="ladder-table">
                 <thead>
                     <tr>
@@ -3533,7 +3535,7 @@ function renderH2H() {
     var h = '<div class="h2h-card"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="font-weight:700;color:var(--text)">' + c1.name + '</span><span style="font-weight:700;color:var(--text)">' + c2.name + '</span></div>' +
         sr("Ladder Position", p1, p2) + sr("Season Record", w1 + "W " + (s1s.length - w1) + "L", w2 + "W " + (s2s.length - w2) + "L") +
         sr("Total Points", tp1.toFixed(1), tp2.toFixed(1)) + sr("Average Score", a1, a2) + sr("Best Score", b1, b2) + sr("Worst Score", wo1, wo2);
-    if (dm.length > 0) h += sr("H2H Record", hw1 + "W " + hd + "D", hw2 + "W " + hd + "D");
+    if (dm.length > 0) h += sr("H2H Record", hw1 + "W " + hw2 + "L", hw2 + "W " + hw1 + "L");
     h += "</div>";
 
     if (s1s.length > 0 || s2s.length > 0) {
@@ -4343,7 +4345,7 @@ async function loadLastTeam() {
         const coachMap = {};
         allCoaches.forEach(c => coachMap[c.id] = c);
 
-        allRounds.forEach(round => {
+        allRounds.filter(round => round.round_number > 0).forEach(round => {
             const roundCoaches = Object.keys(roundScores[round.id] || {}).map(cId => ({
                 id: parseInt(cId),
                 points: roundScores[round.id][cId],
@@ -4359,7 +4361,7 @@ async function loadLastTeam() {
                 }
             }
 
-            html += `<div style="margin-bottom:1.5rem"><h3 style="font-size:0.95rem;font-weight:700;margin-bottom:0.75rem;color:var(--accent)">Round ${round.id} ${round.status === 'live' ? '<span class="fixture-status fixture-status-live">LIVE</span>' : round.status === 'completed' ? '<span class="fixture-status fixture-status-completed">COMPLETED</span>' : '<span class="fixture-status fixture-status-upcoming">UPCOMING</span>'}</h3>`;
+            html += `<div style="margin-bottom:1.5rem"><h3 style="font-size:0.95rem;font-weight:700;margin-bottom:0.75rem;color:var(--accent)">Round ${round.round_number} ${round.status === 'live' ? '<span class="fixture-status fixture-status-live">LIVE</span>' : round.status === 'completed' ? '<span class="fixture-status fixture-status-completed">COMPLETED</span>' : '<span class="fixture-status fixture-status-upcoming">UPCOMING</span>'}</h3>`;
 
             matchups.forEach((matchup, idx) => {
                 const [c1, c2] = matchup;
