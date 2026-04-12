@@ -2560,7 +2560,7 @@ function renderTeams() {
 
     allCoaches.forEach(c => {
         const players = allPlayers.filter(p => p.coach_id === c.id);
-        const scores = allScores.filter(s => s.coach_id === c.id);
+        const scores = allScores.filter(s => s.coach_id === c.id && (allRounds.find(r => r.id == s.round_id)?.round_number || 0) > 0);
         const wins = scores.filter(s => {
             const roundScores = allScores.filter(os => os.round_id === s.round_id).map(os => parseFloat(os.points || 0));
             const avg = roundScores.length > 0 ? roundScores.reduce((a, b) => a + b, 0) / roundScores.length : 0;
@@ -2597,7 +2597,7 @@ async function openTeamModal(coachId) {
     const coach = allCoaches.find(c => c.id === coachId);
     if (!coach) return;
     const players = allPlayers.filter(p => p.coach_id === coachId);
-    const scores = allScores.filter(s => s.coach_id === coachId);
+    const scores = allScores.filter(s => s.coach_id === coachId && (allRounds.find(r => r.id == s.round_id)?.round_number || 0) > 0);
     const pf = scores.reduce((sum, s) => sum + parseFloat(s.points || 0), 0);
     // Wins = rounds where this coach scored above average
     const wins = scores.filter(s => {
@@ -4171,7 +4171,7 @@ async function loadLastTeam() {
         dedupActivities.slice(0, 8).forEach(activity => {
             if (activity.coach) {
                 feedHtml += `<div class="activity-item">
-                    <div class="activity-avatar" style="background:${activity.coach.color||'#555'};color:#fff;font-weight:700;font-size:0.85rem">${(activity.coach.name||'?')[0].toUpperCase()}</div>
+                    <div class="activity-avatar" style="${activity.coach.avatar_emoji?'':`background:${activity.coach.color||'#555'};color:#fff;font-weight:700;font-size:0.85rem`}">${activity.coach.avatar_emoji||(activity.coach.name||'?')[0].toUpperCase()}</div>
                     <div class="activity-content">
                         <div class="activity-title">${activity.coach.name}</div>
                         <div class="activity-description">${activity.text}</div>
