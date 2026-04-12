@@ -3033,7 +3033,7 @@ function renderStats() {
     const awardsGridEl = document.getElementById('awardsGrid');
     awardsGridEl.innerHTML = '';
 
-    allRounds.filter(r => r.status === 'completed').forEach(round => {
+    allRounds.filter(r => r.status === 'completed' && r.round_number > 0).forEach(round => {
         const roundScores = allScores.filter(s => s.round_id === round.id);
         if (roundScores.length === 0) return;
 
