@@ -2421,6 +2421,10 @@ function renderLadder() {
         const rankClass = l.rank <= 3 ? `rank-${l.rank}` : 'rank-other';
 
         const isMe = currentCoach && c.id === currentCoach.id;
+        const fRes = l.form.map(f => typeof f === 'object' ? f.result : f);
+        const lastR = fRes[fRes.length-1] || '';
+        let sCount = 0; for (let i = fRes.length-1; i>=0 && fRes[i]===lastR; i--) sCount++;
+        const sBadge = sCount>0 ? `<span class="streak-badge ${lastR==='W'?'streak-win':'streak-loss'}" style="font-size:0.65rem;padding:2px 5px;margin-top:3px;display:inline-block">${lastR}${sCount}</span>` : '';
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         if (isMe) tr.style.background = 'rgba(56, 189, 248, 0.08)';
@@ -2443,7 +2447,7 @@ function renderLadder() {
                         const tip = typeof f === 'object' ? `R${f.round}: ${f.pts.toFixed(1)} pts` : '';
                         return `<div class="form-dot ${res === 'W' ? 'w' : 'l'}" ${tip ? `title="${tip}"` : ''}></div>`;
                     }).join('')}
-                </div>
+                </div>${sBadge}
             </td>
             <td>${l.played}</td>
             <td>${l.form.filter(f => f.result === 'W').length}</td>
@@ -3010,13 +3014,29 @@ function renderStats() {
         });
     });
 
+    // Trend: last 2 rounds vs earlier rounds
+    let trendUpName='',trendUpVal='',trendDownName='',trendDownVal='';
+    (function(){
+        const cRs=allRounds.filter(r=>r.status==='completed'&&r.round_number>0).sort((a,b)=>b.round_number-a.round_number);
+        if(cRs.length<3)return;
+        const rIds=cRs.slice(0,2).map(r=>r.id),eIds=cRs.slice(2).map(r=>r.id);
+        const bC={};
+        completedScores.forEach(s=>{if(!bC[s.coach_id])bC[s.coach_id]={r:[],e:[]};if(rIds.includes(s.round_id))bC[s.coach_id].r.push(parseFloat(s.points));else if(eIds.includes(s.round_id))bC[s.coach_id].e.push(parseFloat(s.points));});
+        const tr=Object.entries(bC).map(([id,d])=>{if(!d.r.length||!d.e.length)return null;const rA=d.r.reduce((a,b)=>a+b,0)/d.r.length,eA=d.e.reduce((a,b)=>a+b,0)/d.e.length;return{id:parseInt(id),delta:rA-eA};}).filter(Boolean).sort((a,b)=>b.delta-a.delta);
+        if(!tr.length)return;
+        const hC=allCoaches.find(c=>c.id===tr[0].id),cC=allCoaches.find(c=>c.id===tr[tr.length-1].id);
+        if(hC){trendUpName=hC.name;trendUpVal=(tr[0].delta>0?'+':'')+tr[0].delta.toFixed(1)+' avg';}
+        if(cC){trendDownName=cC.name;trendDownVal=tr[tr.length-1].delta.toFixed(1)+' avg';}
+    })();
     const stats = [
         { title: 'Highest Score', value: highScore.toFixed(1), detail: `${highCoachName} - Round ${highRound?.round_number ?? highCoach?.round_id ?? '?'}` },
         { title: 'Lowest Score', value: lowScore.toFixed(1), detail: `${lowCoachName} - Round ${lowRound?.round_number ?? lowCoach?.round_id ?? '?'}` },
         { title: 'League Average', value: avgScore, detail: 'Per coach per round' },
         { title: 'Biggest Blowout', value: `${biggestMargin.toFixed(1)}`, detail: biggestMatch },
         { title: 'Total Players', value: allPlayers.length, detail: 'Across 16 coaches' },
-        { title: 'Total Trades', value: allTrades.length, detail: `${allTrades.filter(t => t.status === 'accepted').length} accepted` }
+        { title: 'Total Trades', value: allTrades.length, detail: `${allTrades.filter(t => t.status === 'accepted').length} accepted` },
+        ...(trendUpName?[{title:'🔥 In Form',value:trendUpName,detail:trendUpVal+' vs earlier rounds'}]:[]),
+        ...(trendDownName?[{title:'❄️ Out of Form',value:trendDownName,detail:trendDownVal+' vs earlier rounds'}]:[])
     ];
 
     stats.forEach(s => {
@@ -3457,9 +3477,9 @@ function setupRealtime() {
 }
 
 var TRASH_TALK=[{emoji:"\ud83d\udd25",text:"Someone sitting pretty on top... for now",hot:true},{emoji:"\ud83d\udca9",text:"That was a rough round, yikes."},{emoji:"\ud83c\udfc6",text:"On a winning streak!",hot:true},{emoji:"\ud83d\ude2d",text:"Still searching for that first win? You got this!"},{emoji:"\ud83d\udcaa",text:"Averaging big points across the season"},{emoji:"\ud83e\udd21",text:"The league has started, get in there!"},{emoji:"\ud83d\udca5",text:"Absolute scenes this round!",hot:true},{emoji:"\ud83d\udcc9",text:"Scores trending - check the ladder"},{emoji:"\ud83c\udfaf",text:"Quietly building momentum"},{emoji:"\ud83e\udde0",text:"Playing 4D chess with those trades"},{emoji:"\ud83d\ude80",text:"Coming for that top spot",hot:true},{emoji:"\ud83d\udcca",text:"Check this week\'s league average"},{emoji:"\u26a0\ufe0f",text:"Injuries hitting hard this round"},{emoji:"\ud83c\udf1f",text:"MVP of the week incoming..."},{emoji:"\ud83d\udc80",text:"Bottom spots looking tense right now"},{emoji:"\ud83c\udfa8",text:"Making moves nobody expected"}];
-function initTicker(){var t=document.getElementById("tickerTrack");if(!t)return;var d=TRASH_TALK.slice();if(window.ladderData&&window.ladderData.length>0){var m={};(allCoaches||[]).forEach(function(c){m[c.id]=c.name});var top=window.ladderData[0],bot=window.ladderData[window.ladderData.length-1];if(m[top.coach_id])d.push({emoji:"\ud83d\udc51",text:m[top.coach_id]+" sitting on top of the ladder",hot:true});if(m[bot.coach_id])d.push({emoji:"\ud83e\udea6",text:m[bot.coach_id]+" propping up the ladder"})}var items=d.concat(d);t.innerHTML=items.map(function(i){return '<span class="ticker-item'+(i.hot?" ticker-hot":"")+'"><span class="ticker-emoji">'+i.emoji+'</span> '+i.text+'</span>'}).join("")}
+function initTicker(){var t=document.getElementById("tickerTrack");if(!t)return;var d=[];var cm={};(allCoaches||[]).forEach(function(c){cm[c.id]=c;});var sc=(allScores||[]).filter(function(s){return s.points!=null&&!isNaN(parseFloat(s.points))&&((allRounds||[]).find(function(r){return r.id==s.round_id;})||{}).round_number>0;});if(sc.length>0){var hi=sc.reduce(function(a,b){return parseFloat(a.points)>=parseFloat(b.points)?a:b;});var lo=sc.reduce(function(a,b){return parseFloat(a.points)<=parseFloat(b.points)?a:b;});var hiC=cm[hi.coach_id],loC=cm[lo.coach_id];var hiR=(allRounds||[]).find(function(r){return r.id==hi.round_id;});if(hiC)d.push({emoji:"🔥",text:hiC.name+" holds the season high — "+parseFloat(hi.points).toFixed(1)+" pts (R"+((hiR&&hiR.round_number)||"?")+").",hot:true});if(loC)d.push({emoji:"💩",text:loC.name+" has the season low — "+parseFloat(lo.points).toFixed(1)+" pts. Hang in there."});var byC={};sc.forEach(function(s){if(!byC[s.coach_id])byC[s.coach_id]=[];byC[s.coach_id].push(parseFloat(s.points));});var avgs=Object.keys(byC).map(function(id){var p=byC[id];return{id:parseInt(id),avg:p.reduce(function(a,b){return a+b;},0)/p.length,tot:p.reduce(function(a,b){return a+b;},0)};}).sort(function(a,b){return b.avg-a.avg;});if(avgs.length>0&&cm[avgs[0].id])d.push({emoji:"📊",text:cm[avgs[0].id].name+" averages "+avgs[0].avg.toFixed(1)+" pts — best in the league.",hot:true});if(avgs.length>1&&cm[avgs[avgs.length-1].id])d.push({emoji:"📉",text:cm[avgs[avgs.length-1].id].name+" averaging "+avgs[avgs.length-1].avg.toFixed(1)+" pts. Plenty of upside."});}if(window.ladderData&&window.ladderData.length>0){var ld=window.ladderData;var top=ld[0],bot=ld[ld.length-1];if(cm[top.coach_id])d.push({emoji:"🏆",text:cm[top.coach_id].name+" is top of the ladder with "+parseFloat(top.points_for||0).toFixed(1)+" pts total.",hot:true});if(cm[bot.coach_id])d.push({emoji:"🪦",text:cm[bot.coach_id].name+" propping up the ladder — the season is long though."});var onFire=ld.filter(function(l){return(l.wins||0)>=3;}).sort(function(a,b){return(b.wins||0)-(a.wins||0);});if(onFire.length>0&&cm[onFire[0].coach_id])d.push({emoji:"🔥",text:cm[onFire[0].coach_id].name+" is on fire — "+(onFire[0].wins||0)+" wins so far.",hot:true});}if(d.length===0)d=TRASH_TALK.slice();else{var pad=TRASH_TALK.slice(0,Math.max(0,6-d.length));d=d.concat(pad);}var items=d.concat(d);t.innerHTML=items.map(function(i){return'<span class="ticker-item'+(i.hot?" ticker-hot":"")+'"><span class="ticker-emoji">'+i.emoji+'</span> '+i.text+'</span>';}).join("");}
 function initCountdown(){var b=document.getElementById("countdownBar"),t=document.getElementById("countdownTime");if(!b||!t)return;function u(){var n=new Date(),l=new Date();l.setHours(19,20,0,0);var d=(4-n.getDay()+7)%7;if(d===0&&n>=l)d=7;l.setDate(l.getDate()+d);var df=l-n;if(df<=0||df>7*864e5){b.classList.remove("active");return}b.classList.add("active");var dd=Math.floor(df/864e5),hh=Math.floor(df%864e5/36e5),mm=Math.floor(df%36e5/6e4),ss=Math.floor(df%6e4/1e3);t.textContent=dd+"d "+String(hh).padStart(2,"0")+"h "+String(mm).padStart(2,"0")+"m "+String(ss).padStart(2,"0")+"s";b.style.background=df<36e5?"linear-gradient(135deg,#e74c3c,#c0392b)":df<864e5?"linear-gradient(135deg,#e67e22,#d35400)":"linear-gradient(135deg,var(--accent),#27ae60)"}u();setInterval(u,1000)}
-function initH2HSelects(){var s1=document.getElementById("h2hCoach1"),s2=document.getElementById("h2hCoach2");if(!s1||!s2||!allCoaches)return;var cs=allCoaches.slice().sort(function(a,b){return a.name.localeCompare(b.name)});var o=cs.map(function(c){return '<option value="'+c.id+'">'+c.name+(c.team_name?" - "+c.team_name:"")+'</option>'}).join("");s1.innerHTML=o;s2.innerHTML=o;if(cs.length>=2)s2.selectedIndex=1;if(currentCoach)s1.value=currentCoach.id;renderH2H()}
+function initH2HSelects(){var s1=document.getElementById("h2hCoach1"),s2=document.getElementById("h2hCoach2");if(!s1||!s2||!allCoaches)return;var cs=allCoaches.slice().sort(function(a,b){return a.name.localeCompare(b.name)});var o=cs.map(function(c){return '<option value="'+c.id+'">'+c.name+(c.team_name?" - "+c.team_name:"")+'</option>'}).join("");s1.innerHTML=o;s2.innerHTML=o;if(cs.length>=2)s2.selectedIndex=1;if(currentCoach){s1.value=currentCoach.id;var myS=(allScores||[]).filter(function(sc){return sc.coach_id===currentCoach.id&&sc.opponent_id;}).sort(function(a,b){var ra=(allRounds||[]).find(function(r){return r.id==a.round_id;}),rb=(allRounds||[]).find(function(r){return r.id==b.round_id;});return((rb&&rb.round_number)||0)-((ra&&ra.round_number)||0);});if(myS.length>0&&myS[0].opponent_id)s2.value=myS[0].opponent_id;}renderH2H()}
 function renderH2H() {
     var s1 = document.getElementById("h2hCoach1"), s2 = document.getElementById("h2hCoach2"), ct = document.getElementById("h2hResults");
     if (!s1 || !s2 || !ct) return;
@@ -4151,7 +4171,7 @@ async function loadLastTeam() {
         dedupActivities.slice(0, 8).forEach(activity => {
             if (activity.coach) {
                 feedHtml += `<div class="activity-item">
-                    <div class="activity-avatar">${activity.coach.emoji || '👤'}</div>
+                    <div class="activity-avatar" style="background:${activity.coach.color||'#555'};color:#fff;font-weight:700;font-size:0.85rem">${(activity.coach.name||'?')[0].toUpperCase()}</div>
                     <div class="activity-content">
                         <div class="activity-title">${activity.coach.name}</div>
                         <div class="activity-description">${activity.text}</div>
