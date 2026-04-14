@@ -249,8 +249,8 @@
             margin-bottom: 1rem;
         }
 
-        .pin-digit { width:50px;height:56px;background:var(--bg-input);border:2px solid var(--border);border-radius:12px;color:var(--text-primary);font-size:1.5rem;font-weight:700;text-align:center;outline:none;transition:border-color 0.2s;display:flex;align-items:center;justify-content:center;user-select:none; }
-        .pin-digit.active{border-color:var(--accent);} .pin-digit.filled{border-color:var(--accent2);}
+        .pin-digit{width:50px;height:56px;background:var(--bg-input);border:2px solid var(--border);border-radius:12px;color:var(--text-primary);font-size:1.5rem;font-weight:700;text-align:center;outline:none;transition:border-color 0.2s;display:flex;align-items:center;justify-content:center;user-select:none;}
+        .pin-digit.active{border-color:var(--accent);}.pin-digit.filled{border-color:var(--accent2);}
 
         .login-btn {
             width: 100%;
@@ -2245,7 +2245,7 @@ function renderCoachSelect() {
     });
 }
 
-function setupPinInputs(){const h=document.getElementById('pinHidden');if(!h)return;function upd(){const v=h.value.replace(/\D/g,'').slice(0,4);h.value=v;for(let i=0;i<4;i++){const b=document.getElementById('pinBox'+i);if(!b)continue;b.textContent=v[i]?'●':'';b.className='pin-digit'+(v[i]?' filled':'')+(v.length===i?' active':'');}checkLoginReady();}h.addEventListener('input',upd);h.addEventListener('focus',upd);h.addEventListener('blur',()=>{for(let i=0;i<4;i++){const b=document.getElementById('pinBox'+i);if(b)b.classList.remove('active');}});setTimeout(()=>{if(document.getElementById('pinGroup'))h.focus();},200);}
+function setupPinInputs(){var h=document.getElementById('pinHidden');if(!h)return;function upd(){var v=h.value.replace(/\D/g,'').slice(0,4);h.value=v;for(var i=0;i<4;i++){var b=document.getElementById('pinBox'+i);if(!b)continue;b.textContent=v[i]?'●':'';b.className='pin-digit'+(v[i]?' filled':'')+(v.length===i?' active':'');}checkLoginReady();}h.addEventListener('input',upd);h.addEventListener('focus',upd);setTimeout(function(){var g=document.getElementById('pinGroup');if(g)h.focus();},300);}
 
 function setupChangePinInputs() {
     const digits = document.querySelectorAll('.change-pin-digit');
@@ -2284,9 +2284,9 @@ async function submitPinChange() {
         btn.disabled = false; btn.textContent = 'Save PIN';
     }
 }
-function checkLoginReady(){const sel=document.querySelector('.coach-select-btn.selected');const h=document.getElementById('pinHidden');const pin=h?h.value.replace(/\D/g,''):Array.from(document.querySelectorAll('.pin-digit')).map(d=>d.value).join('');document.getElementById('loginBtn').disabled=!(sel&&pin.length===4);}
+function checkLoginReady(){var sel=document.querySelector('.coach-select-btn.selected');var h=document.getElementById('pinHidden');var pin=h?h.value.replace(/\D/g,''):Array.from(document.querySelectorAll('.pin-digit')).map(function(d){return d.value;}).join('');document.getElementById('loginBtn').disabled=!(sel&&pin.length===4);}
 
-function getEnteredPin(){const h=document.getElementById('pinHidden');return h?h.value.replace(/\D/g,''):Array.from(document.querySelectorAll('.pin-digit')).map(d=>d.value).join('');}
+function getEnteredPin(){var h=document.getElementById('pinHidden');return h?h.value.replace(/\D/g,''):Array.from(document.querySelectorAll('.pin-digit')).map(function(d){return d.value;}).join('');}
 
 function setupEventListeners() {
     document.getElementById('loginBtn').addEventListener('click', attemptLogin);
@@ -2346,8 +2346,7 @@ async function attemptLogin() {
         await enterApp();
     } else {
         document.getElementById('loginError').textContent = 'Wrong PIN mate. Try again.';
-        document.querySelectorAll('.pin-digit').forEach(d => { d.value = ''; });
-        document.querySelectorAll('.pin-digit')[0].focus();
+        var ph=document.getElementById('pinHidden');if(ph){ph.value='';for(var i=0;i<4;i++){var b=document.getElementById('pinBox'+i);if(b){b.textContent='';b.className='pin-digit';}}checkLoginReady();setTimeout(function(){if(ph)ph.focus();},50);}
     }
 }
 
@@ -3817,7 +3816,7 @@ function renderPool(){
   list.innerHTML=players.slice(0,150).map(function(p){
     var s=getPlayerStats(p),taken=takenNames.has(p.name),dp=DRAFT_PICKS[p.name];
     var cop=dp?(allCoaches||[]).find(function(c){return c.id===dp.c;}):null;
-    return '<div class="pool-player-row '+(taken?'taken':'')+(recNames.has(p.name)?' recommended':'')+'" onclick="showPlayerDraftInfo(''+p.name.replace(/'/g,"\'")+'')">'
+    return '<div class="pool-player-row '+(taken?'taken':'')+(recNames.has(p.name)?' recommended':'')+'" data-pname="'+p.name.replace(/"/g,'&quot;')+'" onclick="showPlayerDraftInfo(this.dataset.pname)">'
       +getPlayerPhoto(p,32)+'<div style="flex:1;min-width:0"><div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.name+'</div>'
       +'<div style="font-size:0.72rem;color:var(--text-secondary);display:flex;align-items:center;gap:0.3rem">'+getTeamBadge(p.team,'sm')+' '+getPosTag(s)+(taken?'<span style="color:var(--accent2);font-weight:600">Pick #'+dp.p+'</span>':'')+'</div></div>'
       +(taken&&cop?'<div style="text-align:right">'+getJerseyHTML(cop,16)+'<div style="font-size:0.65rem;color:var(--text-secondary);margin-top:2px">'+cop.name+'</div></div>':'')
