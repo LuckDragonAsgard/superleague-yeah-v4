@@ -4716,28 +4716,40 @@ async function loadLastTeam() {
     }
 
     function renderExtendedLadder() {
+        // Compute W/L/streak from allScores (has result:'W'/'L')
+        const validRoundIds = new Set((allRounds||[]).filter(r=>r.round_number>0).map(r=>r.id));
+        const byCoach = {};
+        (allScores||[]).filter(s=>validRoundIds.has(s.round_id)).forEach(s=>{
+            if(!byCoach[s.coach_id])byCoach[s.coach_id]=[];
+            byCoach[s.coach_id].push(s);
+        });
+        const coachMap = {};(allCoaches||[]).forEach(c=>{coachMap[c.id]=c;});
+        const rows = Object.entries(byCoach).map(([cid,scores])=>{
+            scores.sort((a,b)=>a.round_id-b.round_id);
+            const wins=scores.filter(s=>s.result==='W').length;
+            const losses=scores.filter(s=>s.result==='L').length;
+            const pf=scores.reduce((s,sc)=>s+(parseFloat(sc.points)||0),0);
+            const recent=scores.slice(-5).reverse();
+            let streak='';
+            if(recent.length>0){let res=recent[0].result,cnt=0;for(const s of recent){if(s.result===res)cnt++;else break;}streak=res+cnt;}
+            const coach=coachMap[parseInt(cid)];
+            return{coach,wins,losses,pf,streak};
+        }).sort((a,b)=>b.wins!==a.wins?b.wins-a.wins:b.pf-a.pf);
+
         let html = '<div class="ladder-view ladder-extended active"><table class="ladder-table-extended">';
-        html += '<thead><tr><th>Rank</th><th>Team</th><th>W-L</th><th>PF</th><th>PA</th><th>%</th><th>Streak</th></tr></thead><tbody>';
-
-        if (Array.isArray(ladderData)) {
-            ladderData.forEach((team, idx) => {
-                const pf = team.points_for || 0;
-                const pa = team.points_against || 0;
-                const pct = pf + pa > 0 ? ((pf / (pf + pa)) * 100).toFixed(1) : '0.0';
-                const streakText = team.streak || 'N/A';
-                const isWin = streakText[0] === 'W';
-                html += `<tr>
-                    <td>${idx + 1}</td>
-                    <td><strong>${team.name}</strong></td>
-                    <td>${team.wins || 0}-${team.losses || 0}</td>
-                    <td class="stat-primary">${pf}</td>
-                    <td>${pa}</td>
-                    <td class="stat-primary">${pct}%</td>
-                    <td><span class="streak-badge ${isWin ? 'streak-win' : 'streak-loss'}">${streakText}</span></td>
-                </tr>`;
-            });
-        }
-
+        html += '<thead><tr><th>Rank</th><th>Team</th><th>W-L</th><th>Pts For</th><th>Avg</th><th>Streak</th></tr></thead><tbody>';
+        rows.forEach((row,idx)=>{
+            const avg = rows[0] && row.wins+row.losses>0 ? (row.pf/(row.wins+row.losses)).toFixed(1) : '0.0';
+            const isWin = row.streak&&row.streak[0]==='W';
+            html += `<tr>
+                <td>${idx+1}</td>
+                <td><strong>${row.coach?.name||'?'}</strong><div style="font-size:0.72rem;color:var(--text-secondary)">${row.coach?.team_name||''}</div></td>
+                <td>${row.wins}-${row.losses}</td>
+                <td class="stat-primary">${row.pf.toFixed(1)}</td>
+                <td>${avg}</td>
+                <td><span class="streak-badge ${isWin?'streak-win':'streak-loss'}">${row.streak||'-'}</span></td>
+            </tr>`;
+        });
         html += '</tbody></table></div>';
         const ladderPage = document.getElementById('pageLadder');
         if (ladderPage) {
@@ -4750,46 +4762,59 @@ async function loadLastTeam() {
     }
 
     function renderHistoricalLadder() {
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('viewBox', '0 0 1200 400');
-        svg.setAttribute('class', 'ladder-chart-svg');
-        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-
-        const margin = { top: 20, right: 20, bottom: 60, left: 50 };
-        const width = 1200 - margin.left - margin.right;
-        const height = 400 - margin.top - margin.bottom;
-
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('transform', `translate(${margin.left},${margin.top})`);
-
-        const roundCount = Math.max(...allRounds.map(r => r.id || 0));
-        const xStep = width / (roundCount || 1);
-        const yStep = height / 16;
-
-        ladderData.forEach((team, idx) => {
-            const config = TEAM_BADGE_CONFIG[team.name];
-            const color = config ? config.color : '#666666';
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-            path.setAttribute('fill', 'none');
-            path.setAttribute('stroke', color);
-            path.setAttribute('stroke-width', '2');
-            path.setAttribute('opacity', '0.7');
-
-            const points = [];
-            const xBase = xStep * 0.5;
-            for (let r = 1; r <= roundCount; r++) {
-                const y = yStep * (idx + 1);
-                const x = xBase + (r - 1) * xStep;
-                points.push(`${x},${y}`);
+        // Compute round-by-round cumulative standings
+        const validRounds = (allRounds||[]).filter(r=>r.round_number>0&&r.is_complete).sort((a,b)=>a.round_number-b.round_number);
+        if (!validRounds.length) {
+            const ladderPage = document.getElementById('pageLadder');
+            if (ladderPage) {
+                const ex = ladderPage.querySelector('.ladder-historical');
+                if (ex) ex.remove();
+                ladderPage.insertAdjacentHTML('beforeend','<div class="ladder-view ladder-historical"><div style="padding:2rem;text-align:center;color:var(--text-secondary)">No completed rounds yet</div></div>');
             }
-            path.setAttribute('points', points.join(' '));
-            g.appendChild(path);
+            return;
+        }
+        const nRounds = validRounds.length;
+        const nCoaches = (allCoaches||[]).length || 16;
+        // For each round, compute cumulative scores and rank
+        const coachRoundRank = {}; // coachId -> [rank after r1, rank after r2, ...]
+        const coachCumPts = {};
+        (allCoaches||[]).forEach(c=>{coachCumPts[c.id]=0;});
+        validRounds.forEach((round, rIdx)=>{
+            const roundScores = (allScores||[]).filter(s=>s.round_id===round.id&&s.round_number!==0);
+            roundScores.forEach(s=>{coachCumPts[s.coach_id]=(coachCumPts[s.coach_id]||0)+parseFloat(s.points||0);});
+            // Rank coaches by cumulative pts
+            const sorted = Object.entries(coachCumPts).sort((a,b)=>b[1]-a[1]);
+            sorted.forEach(([cid],rank)=>{
+                if(!coachRoundRank[cid])coachRoundRank[cid]=[];
+                coachRoundRank[cid][rIdx]=rank+1;
+            });
         });
 
-        svg.appendChild(g);
+        const margin={top:20,right:80,bottom:40,left:40};
+        const W=900,H=380;
+        const chartW=W-margin.left-margin.right,chartH=H-margin.top-margin.bottom;
+        const xStep=chartW/(nRounds-1||1),yStep=chartH/(nCoaches-1||1);
 
-        let html = '<div class="ladder-view ladder-historical"><div class="ladder-chart-container">';
-        html += svg.outerHTML;
+        let svgParts=[`<svg viewBox="0 0 ${W} ${H}" class="ladder-chart-svg" preserveAspectRatio="xMidYMid meet"><g transform="translate(${margin.left},${margin.top})">`];
+        // Grid lines
+        for(let i=1;i<=nCoaches;i++){const y=(i-1)*yStep;svgParts.push(`<line x1="0" y1="${y}" x2="${chartW}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`);}
+        // Round labels
+        validRounds.forEach((round,i)=>{const x=i*xStep;svgParts.push(`<text x="${x}" y="${chartH+25}" text-anchor="middle" font-size="11" fill="rgba(255,255,255,0.5)">R${round.round_number}</text>`);});
+        // Coach lines
+        (allCoaches||[]).forEach(coach=>{
+            const ranks=coachRoundRank[coach.id]||[];
+            if(!ranks.length)return;
+            const pts=ranks.map((rank,i)=>`${i*xStep},${(rank-1)*yStep}`);
+            const color=coach.color||'#888';
+            svgParts.push(`<polyline fill="none" stroke="${color}" stroke-width="2.5" opacity="0.8" points="${pts.join(' ')}"/>`);
+            // Label at end
+            const lastRank=ranks[ranks.length-1];
+            if(lastRank){const lx=(ranks.length-1)*xStep,ly=(lastRank-1)*yStep;svgParts.push(`<circle cx="${lx}" cy="${ly}" r="4" fill="${color}"/><text x="${lx+8}" y="${ly+4}" font-size="10" fill="${color}">${coach.name}</text>`);}
+        });
+        svgParts.push('</g></svg>');
+
+        let html = '<div class="ladder-view ladder-historical"><div class="ladder-chart-container" style="overflow-x:auto">';
+        html += svgParts.join('');
         html += '</div></div>';
 
         const ladderPage = document.getElementById('pageLadder');
