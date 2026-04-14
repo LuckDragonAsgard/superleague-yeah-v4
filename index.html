@@ -656,6 +656,24 @@
             font-weight: 700;
             margin-left: 0.5rem;
         }
+        .sly-gold-badge {
+            display: inline-flex; align-items: center; gap: 2px;
+            background: linear-gradient(135deg, #f5c518, #e8a000, #f5c518);
+            color: #3a1e00; padding: 0.18rem 0.5rem; border-radius: 20px;
+            font-size: 0.65rem; font-weight: 800; margin-left: 0.4rem;
+            letter-spacing: 0.03em; box-shadow: 0 1px 4px rgba(229,160,0,0.5);
+            animation: goldShimmer 2.5s ease-in-out infinite;
+        }
+        @keyframes goldShimmer {
+            0%, 100% { box-shadow: 0 1px 4px rgba(229,160,0,0.4); }
+            50% { box-shadow: 0 1px 10px rgba(229,160,0,0.9); }
+        }
+        .sly-gold-admin-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.5rem 0.75rem; background: var(--bg-card);
+            border-radius: 10px; border: 1px solid var(--border);
+        }
+        .sly-gold-admin-row.is-gold { border-color: #e8a000; background: rgba(232,160,0,0.08); }
 
         .auto-pick-btn {
             padding: 0.75rem 1rem;
@@ -1847,6 +1865,13 @@
             <div id="autoPickStatus" class="autopick-status" style="display:none"></div>
         </div>
 
+        <div class="admin-section" style="margin-top:1.5rem">
+            <h3 style="font-size:1rem;margin-bottom:0.35rem;color:#e8a000">⭐ SLY Gold Members</h3>
+            <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.75rem">Mark coaches as SLY Gold for premium status. Toggle to add/remove.</p>
+            <div id="goldMembersGrid" style="display:grid;gap:0.5rem"></div>
+            <div id="goldStatus" style="margin-top:0.5rem;font-size:0.78rem;color:#e8a000"></div>
+        </div>
+
     </div>
 
 
@@ -1871,6 +1896,15 @@
             <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.75rem;color:var(--text-primary)">WHO'S PAID</div>
             <div id="fundPaymentsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem"></div>
             <div id="fundPayStatus" style="margin-top:0.75rem;font-size:0.78rem;color:var(--accent)"></div>
+        </div>
+        <div style="background:linear-gradient(135deg,rgba(232,160,0,0.12),rgba(245,197,24,0.06));border-radius:16px;padding:1.25rem;margin-bottom:1.25rem;border:1px solid rgba(232,160,0,0.35)">
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+                <span style="font-size:1.1rem">⭐</span>
+                <span style="font-size:0.9rem;font-weight:800;color:#e8a000">SLY GOLD</span>
+                <span style="font-size:0.7rem;color:var(--text-secondary);margin-left:auto">Premium members</span>
+            </div>
+            <p style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.75rem">Pay an extra $20 to go SLY Gold and get the ⭐ badge across the league.</p>
+            <div id="fundGoldGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem"></div>
         </div>
         <div style="background:var(--bg-card);border-radius:16px;padding:1.25rem;border:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
@@ -1957,6 +1991,19 @@
 <script>
 // ========== API CONFIG ==========
 const API = 'https://sly-api.pgallivan.workers.dev';
+
+    // AFL player photo IDs - loaded dynamically from AFL Fantasy API
+    let PLAYER_PHOTO_IDS = {};
+    (async () => {
+        try {
+            const r = await fetch('https://fantasy.afl.com.au/data/afl/players.json', {cache: 'force-cache'});
+            if (r.ok) {
+                const list = await r.json();
+                list.forEach(p => { PLAYER_PHOTO_IDS[(p.first_name + ' ' + p.last_name).trim()] = p.id; });
+                console.log('[SLY] Loaded', Object.keys(PLAYER_PHOTO_IDS).length, 'player photo IDs');
+            }
+        } catch(e) { console.warn('[SLY] Could not load player photo IDs:', e.message); }
+    })();
 async function apiFetch(path, opts={}) {
     const res = await fetch(API + path, {
         ...opts,
@@ -2023,47 +2070,41 @@ function adjustBrightness(color, percent) {
 
 function getJerseySVG(color, size) {
     size = size || 32; size = Math.round(size * 1.5);
-    const uid = color.replace('#','');
-    const dk  = adjustBrightness(color, -0.28);
-    const dk2 = adjustBrightness(color, -0.50);
-    const lt  = adjustBrightness(color,  0.22);
-    return `<svg width="${size}" height="${size}" viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Team jersey">
+    const uid = 'j' + color.replace('#','') + size;
+    const dk  = adjustBrightness(color, -0.30);
+    const dk2 = adjustBrightness(color, -0.55);
+    const lt  = adjustBrightness(color,  0.28);
+    const stripe = adjustBrightness(color, 0.55);
+    return `<svg width="${size}" height="${size}" viewBox="0 0 100 116" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Team jersey">
       <defs>
-        <linearGradient id="bg${uid}" x1="0" y1="0" x2="0.6" y2="1">
+        <linearGradient id="bg${uid}" x1="0.2" y1="0" x2="0.8" y2="1">
           <stop offset="0%" stop-color="${lt}"/>
+          <stop offset="50%" stop-color="${color}"/>
           <stop offset="100%" stop-color="${dk}"/>
         </linearGradient>
         <linearGradient id="sg${uid}" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="${lt}"/>
           <stop offset="100%" stop-color="${dk}"/>
         </linearGradient>
-        <filter id="sh${uid}" x="-10%" y="-10%" width="120%" height="130%">
-          <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.30)"/>
+        <filter id="sh${uid}" x="-15%" y="-10%" width="130%" height="130%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.40)"/>
         </filter>
+        <clipPath id="bc${uid}">
+          <path d="M32,14 L42,4 L58,4 L68,14 L70,112 L30,112 Z"/>
+        </clipPath>
       </defs>
-      <!-- Drop shadow group -->
       <g filter="url(#sh${uid})">
-        <!-- Left sleeve -->
-        <path d="M8,20 L34,16 L33,46 L9,44 Q6,42 8,20 Z"
-              fill="url(#sg${uid})" stroke="${dk2}" stroke-width="1.2" stroke-linejoin="round"/>
-        <!-- Right sleeve -->
-        <path d="M92,20 L66,16 L67,46 L91,44 Q94,42 92,20 Z"
-              fill="url(#sg${uid})" stroke="${dk2}" stroke-width="1.2" stroke-linejoin="round"/>
-        <!-- Body -->
-        <path d="M34,16 L43,6 L57,6 L66,16 L68,108 L32,108 Z"
-              fill="url(#bg${uid})" stroke="${dk2}" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M5,18 L33,13 L32,48 L7,46 Q3,44 5,18 Z" fill="url(#sg${uid})" stroke="${dk2}" stroke-width="1" stroke-linejoin="round"/>
+        <path d="M95,18 L67,13 L68,48 L93,46 Q97,44 95,18 Z" fill="url(#sg${uid})" stroke="${dk2}" stroke-width="1" stroke-linejoin="round"/>
+        <path d="M32,14 L42,4 L58,4 L68,14 L70,112 L30,112 Z" fill="url(#bg${uid})" stroke="${dk2}" stroke-width="1" stroke-linejoin="round"/>
+        <rect x="30" y="36" width="40" height="11" fill="${stripe}" opacity="0.30" clip-path="url(#bc${uid})"/>
       </g>
-      <!-- Yoke sheen -->
-      <path d="M35,17 L65,17 L63,30 L37,30 Z" fill="${lt}" opacity="0.25"/>
-      <!-- Chest highlight -->
-      <path d="M37,22 L48,22 L48,40 L37,38 Z" fill="${lt}" opacity="0.12"/>
-      <!-- V-collar fill -->
-      <path d="M43,6 L50,26 L57,6 L52,5 L50,19 L48,5 Z" fill="${dk2}" opacity="0.9"/>
-      <!-- V-collar edge lines -->
-      <polyline points="43,6 50,26 57,6" fill="none" stroke="${dk2}" stroke-width="1.8" stroke-linejoin="round"/>
-      <!-- Sleeve-body seam lines -->
-      <line x1="33" y1="16" x2="33" y2="46" stroke="${dk2}" stroke-width="0.8" opacity="0.5"/>
-      <line x1="67" y1="16" x2="67" y2="46" stroke="${dk2}" stroke-width="0.8" opacity="0.5"/>
+      <path d="M33,15 L67,15 L65,27 L35,27 Z" fill="${lt}" opacity="0.20" clip-path="url(#bc${uid})"/>
+      <path d="M42,4 L50,24 L58,4 L53,3 L50,18 L47,3 Z" fill="${dk2}" opacity="0.95"/>
+      <polyline points="42,4 50,24 58,4" fill="none" stroke="${dk2}" stroke-width="2" stroke-linejoin="round"/>
+      <line x1="32" y1="14" x2="32" y2="48" stroke="${dk2}" stroke-width="0.7" opacity="0.45"/>
+      <line x1="68" y1="14" x2="68" y2="48" stroke="${dk2}" stroke-width="0.7" opacity="0.45"/>
+      <path d="M35,16 L46,16 L46,35 L35,32 Z" fill="white" opacity="0.07"/>
     </svg>`;
 }
 
@@ -2437,7 +2478,7 @@ function renderLadder() {
                 <div class="coach-cell">
                     <span style="display:inline-flex;align-items:center">${getJerseyHTML(c, 30)}</span>
                     <div>
-                        <div class="coach-cell-name">${c.name}</div>
+                        <div class="coach-cell-name">${c.name}${isGoldMember(c.id) ? getGoldBadgeHTML() : ''}</div>
                         <div class="coach-cell-team">${c.team_name}</div>
                     </div>
                 </div>
@@ -3095,6 +3136,7 @@ function setupAdmin() {
     }
     document.getElementById('adminNav').style.display = '';
     loadPayments();
+    loadGoldAdmin();
 
     const selects = ['adminRoundSelect', 'adminPasteRound', 'adminStatsRound'];
     selects.forEach(selId => {
@@ -3322,6 +3364,43 @@ async function recalcScoresForRound(roundId, statusEl) {
 
 
 // ========== PAYMENTS / BUY-INS ==========
+// ========== SLY GOLD SYSTEM ==========
+function getGoldMembers() { try { return JSON.parse(localStorage.getItem('slyGoldMembers') || '{}'); } catch(e) { return {}; } }
+function setGoldMember(coachId, isGold) { const g = getGoldMembers(); if (isGold) g[coachId] = true; else delete g[coachId]; localStorage.setItem('slyGoldMembers', JSON.stringify(g)); }
+function isGoldMember(coachId) { return !!getGoldMembers()[String(coachId)]; }
+function getGoldBadgeHTML() { return '<span class="sly-gold-badge">⭐ GOLD</span>'; }
+function loadGoldAdmin() {
+    const grid = document.getElementById('goldMembersGrid');
+    const status = document.getElementById('goldStatus');
+    if (!grid || !allCoaches) return;
+    const gold = getGoldMembers();
+    grid.innerHTML = '';
+    allCoaches.slice().sort((a,b) => a.name.localeCompare(b.name)).forEach(coach => {
+        const isGold = !!gold[String(coach.id)];
+        const row = document.createElement('div');
+        row.className = 'sly-gold-admin-row' + (isGold ? ' is-gold' : '');
+        row.innerHTML = getJerseyHTML(coach, 20) + `<span style="flex:1;font-size:0.85rem;font-weight:600;margin-left:0.5rem">${coach.name}${isGold ? getGoldBadgeHTML() : ''}</span><label class="toggle-switch" style="transform:scale(0.8)"><input type="checkbox" ${isGold ? 'checked' : ''} onchange="toggleGold(${coach.id}, this.checked, this.closest('.sly-gold-admin-row'))"><span class="slider"></span></label>`;
+        grid.appendChild(row);
+    });
+    const goldCount = Object.keys(gold).length;
+    if (status) status.textContent = goldCount > 0 ? `${goldCount} gold member${goldCount > 1 ? 's' : ''} — ${goldCount * 20} extra collected` : '';
+}
+function toggleGold(coachId, isGold, rowEl) {
+    setGoldMember(coachId, isGold);
+    if (rowEl) rowEl.className = 'sly-gold-admin-row' + (isGold ? ' is-gold' : '');
+    loadGoldAdmin();
+    if (typeof loadSlushFund === 'function' && document.getElementById('pageSlushFund') && document.getElementById('pageSlushFund').classList.contains('active')) loadSlushFund();
+}
+function renderFundGoldGrid() {
+    const grid = document.getElementById('fundGoldGrid');
+    if (!grid || !allCoaches) return;
+    const gold = getGoldMembers();
+    const goldCoaches = allCoaches.filter(c => gold[String(c.id)]);
+    if (goldCoaches.length === 0) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);font-size:0.8rem;padding:0.5rem">No gold members yet — admin can add them</div>'; return; }
+    grid.innerHTML = goldCoaches.map(c => `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.45rem 0.65rem;background:rgba(232,160,0,0.1);border-radius:8px;border:1px solid rgba(232,160,0,0.3)">${getJerseyHTML(c, 18)}<span style="font-size:0.82rem;font-weight:600;flex:1">${c.name}</span><span style="font-size:0.75rem;color:#e8a000;font-weight:700">$20</span></div>`).join('');
+}
+// ========== END SLY GOLD ==========
+
 async function loadPayments() {
     const grid = document.getElementById('paymentsGrid');
     const status = document.getElementById('paymentsStatus');
@@ -3466,6 +3545,7 @@ async function pollScoresAndMessages() {
             if (currentPage === 'pageHome') loadHomePage();
         }
         updateLastUpdatedBar();
+        maybeAdjustPollInterval();
     } catch(e) {
         console.warn('[Poll] Error:', e);
     }
@@ -3475,7 +3555,15 @@ function setupRealtime() {
     __lastScoreHash = scoreHash(allScores);
     updateLastUpdatedBar();
     if (window.__pollInterval) clearInterval(window.__pollInterval);
-    window.__pollInterval = setInterval(pollScoresAndMessages, 30000);
+    const liveRound = (allRounds || []).find(r => r.status === 'live');
+    const pollMs = liveRound ? 10000 : 30000;
+    window.__pollInterval = setInterval(pollScoresAndMessages, pollMs);
+    window.__realtimeRoundStatus = liveRound ? 'live' : 'idle';
+}
+function maybeAdjustPollInterval() {
+    const liveRound = (allRounds || []).find(r => r.status === 'live');
+    const newStatus = liveRound ? 'live' : 'idle';
+    if (newStatus !== window.__realtimeRoundStatus) setupRealtime();
 }
 
 var TRASH_TALK=[{emoji:"\ud83d\udd25",text:"Someone sitting pretty on top... for now",hot:true},{emoji:"\ud83d\udca9",text:"That was a rough round, yikes."},{emoji:"\ud83c\udfc6",text:"On a winning streak!",hot:true},{emoji:"\ud83d\ude2d",text:"Still searching for that first win? You got this!"},{emoji:"\ud83d\udcaa",text:"Averaging big points across the season"},{emoji:"\ud83e\udd21",text:"The league has started, get in there!"},{emoji:"\ud83d\udca5",text:"Absolute scenes this round!",hot:true},{emoji:"\ud83d\udcc9",text:"Scores trending - check the ladder"},{emoji:"\ud83c\udfaf",text:"Quietly building momentum"},{emoji:"\ud83e\udde0",text:"Playing 4D chess with those trades"},{emoji:"\ud83d\ude80",text:"Coming for that top spot",hot:true},{emoji:"\ud83d\udcca",text:"Check this week\'s league average"},{emoji:"\u26a0\ufe0f",text:"Injuries hitting hard this round"},{emoji:"\ud83c\udf1f",text:"MVP of the week incoming..."},{emoji:"\ud83d\udc80",text:"Bottom spots looking tense right now"},{emoji:"\ud83c\udfa8",text:"Making moves nobody expected"}];
@@ -3889,6 +3977,7 @@ async function loadLastTeam() {
             document.getElementById('addExpenseForm').style.display = isAdm ? '' : 'none';
             const dateInput = document.getElementById('expenseDate');
             if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0,10);
+        renderFundGoldGrid();
         } catch(e) { console.error('loadSlushFund error', e); }
     }
 
@@ -3987,12 +4076,14 @@ async function loadLastTeam() {
             const parts = player.name.split(' ');
             initials = (parts[0][0] || '') + (parts[parts.length-1][0] || '');
         }
-        if (player.champid) {
-            const photoUrl = `https://s.afl.com.au/staticfile/AFL%20Tenant/AFL/Players/ChampIDImages/AFL/2026014/${player.champid}.png?im=Scale,width=0.2,height=0.2`;
-            return `<div class="player-photo" style="width:${size}px;height:${size}px;background:${bgColor}"><img src="${photoUrl}" alt="${player.name}" onerror="this.parentElement.innerHTML='<span class=player-photo-initials>${initials.toUpperCase()}</span>'"></div>`;
+        // Use champid, then name-based AFL fantasy lookup, then photo_url
+        const photoId = player.champid || PLAYER_PHOTO_IDS[player.name];
+        if (photoId) {
+            const photoUrl = `https://s.afl.com.au/staticfile/AFL%20Tenant/AFL/Players/ChampIDImages/AFL/2026014/${photoId}.png`;
+            return `<div class="player-photo" style="width:${size}px;height:${size}px;background:${bgColor};overflow:hidden"><img src="${photoUrl}" alt="${player.name}" style="width:100%;height:100%;object-fit:cover;object-position:top center" onerror="this.parentElement.innerHTML='<span class=player-photo-initials>${initials.toUpperCase()}</span>'"></div>`;
         }
         if (player.photo_url) {
-            return `<div class="player-photo" style="width:${size}px;height:${size}px;background:${bgColor}"><img src="${player.photo_url}" alt="${player.name}" onerror="this.parentElement.innerHTML='<span class=player-photo-initials>${initials.toUpperCase()}</span>'"></div>`;
+            return `<div class="player-photo" style="width:${size}px;height:${size}px;background:${bgColor};overflow:hidden"><img src="${player.photo_url}" alt="${player.name}" style="width:100%;height:100%;object-fit:cover;object-position:top center" onerror="this.parentElement.innerHTML='<span class=player-photo-initials>${initials.toUpperCase()}</span>'"></div>`;
         }
         return `<div class="player-photo" style="width:${size}px;height:${size}px;background:${bgColor};font-size:${size*0.45}px"><span class="player-photo-initials">${initials.toUpperCase()}</span></div>`;
     }
