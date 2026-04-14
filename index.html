@@ -4579,9 +4579,32 @@ async function loadLastTeam() {
 
     // ========== INJURY ROOM PAGE ==========
     async function loadInjuries() {
-    // Auto-populate from AFL Fantasy player status if no manual injuries in DB
     const injContent = document.getElementById('injuriesContent');
     if (!injContent) return;
+    try {
+        // Use config table - pre-cached injury data, no CORS issues
+        const configData = await apiFetch('/api/config?key=injuries');
+        const injured = configData?.value ? JSON.parse(configData.value) : [];
+        if (Array.isArray(injured) && injured.length > 0) {
+            injContent.innerHTML = '<div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.75rem">AFL Fantasy injury status for players in SLY squads. Updated regularly.</div>'
+                + injured.map(p => {
+                    const coach = (allCoaches||[]).find(c=>c.id===p.coach_id);
+                    const statusEmoji = {injured:'🚑',out:'🚫','not-playing':'⛔',medical_sub:'🔄',substitute:'🔄'}[p.status]||'❓';
+                    return '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;background:var(--bg-card);border-radius:10px;margin-bottom:0.5rem;border:1px solid var(--border)">'
+                        + getPlayerPhoto({name:p.name,team:p.team,coach_id:p.coach_id},40)
+                        + '<div style="flex:1"><div style="font-size:0.88rem;font-weight:600">'+p.name+'</div>'
+                        + '<div style="font-size:0.72rem;color:var(--text-secondary)">'+getTeamBadge(p.team,'sm')+'</div></div>'
+                        + '<div style="text-align:right"><div style="font-size:1.1rem">'+statusEmoji+'</div>'
+                        + '<div style="font-size:0.7rem;color:var(--loss);font-weight:600;text-transform:uppercase">'+p.status.replace(/_/g,' ')+'</div>'
+                        + (coach?'<div style="font-size:0.68rem;color:var(--text-secondary)">'+coach.name+'</div>':'')
+                        + '</div></div>';
+                }).join('');
+            return;
+        }
+        injContent.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-secondary)">No injury alerts for your squad right now 🎉</div>';
+        return;
+    } catch(e) { console.warn('Injuries:', e.message); }
+    // Fallback: try direct AFL Fantasy fetch (works on some networks)
     try {
         const r = await fetch('https://fantasy.afl.com.au/data/afl/players.json', {cache:'force-cache'});
         if (!r.ok) throw new Error('AFL Fantasy unavailable');
