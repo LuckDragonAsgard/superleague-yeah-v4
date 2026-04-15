@@ -1980,7 +1980,7 @@
     <!-- SLUSH FUND PAGE -->
     <div id="pageInjuries" class="page">
         <h2 style="margin-bottom:1.5rem;color:var(--text)">Injury Room 🏥</h2>
-        <div id="injuriesContent"><div style="padding:2rem;text-align:center;color:var(--text-secondary)"><div class="spinner"></div><div style="margin-top:0.5rem;font-size:0.85rem">Loading injury room...</div></div></div>
+        <div id="injuriesContent"></div>
     </div>
 
     <div id="pageSlushFund" class="page">
@@ -2408,6 +2408,7 @@ async function enterApp() {
         renderFixtures();
         renderTeams();
         renderTrades();
+        loadInjuries();
         renderChat();
         renderStats(); initNewFeatures();
         loadHomePage();
