@@ -51,7 +51,7 @@
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
-            padding-bottom: 160px;
+            padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
             transition: all 0.3s ease;
         }
 
@@ -125,7 +125,7 @@
             background: var(--bg-secondary);
             border-top: 1px solid var(--border);
             z-index: 100;
-            padding: 0.5rem 0;
+            padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
             backdrop-filter: blur(10px);
         }
 
@@ -1981,7 +1981,14 @@
 
     <div id="pageSlushFund" class="page">
         <div class="section-title">💰 The Fund</div>
-        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1.25rem">$50 buy-in per coach. Slush fund for the end of season party 🎉</p>
+        <div style="background:linear-gradient(135deg,rgba(0,212,255,0.1),rgba(0,255,136,0.05));border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;border:1px solid var(--border)">
+            <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem">💳 HOW TO PAY</div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.35rem">Standard entry: <strong style="color:var(--accent2)">$50</strong> &nbsp;|&nbsp; SLY Gold: <strong style="color:#e8a000">$100 total</strong></div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.35rem">Bank transfer to Paddy Gallivan</div>
+            <div style="font-size:0.78rem;color:var(--text-secondary)">BSB: <strong style="color:var(--text-primary)">contact Paddy for details</strong></div>
+            <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:0.4rem">Reference: your name. Message Paddy once paid ✓</div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1.25rem">$50 buy-in per coach. All money goes to the Day of Days party 🎉</p>
         <div id="fundSummaryCard" style="background:var(--bg-card);border-radius:16px;padding:1.25rem 1.5rem;margin-bottom:1.25rem;border:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem">
                 <div><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.2rem">COLLECTED</div><div id="fundCollected" style="font-size:2rem;font-weight:800;color:var(--accent2)">$0</div></div>
@@ -2813,14 +2820,20 @@ async function openTeamModal(coachId) {
 
     const list = document.getElementById('modalPlayerList');
     list.innerHTML = '';
+    const isGold = isGoldMember(coachId);
     list.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem;list-style:none;padding:0;margin-top:0.5rem';
     players.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+        const stats = typeof AFL_STATS !== 'undefined' ? AFL_STATS[p.name] : null;
+        const pos = stats ? (['','DEF','MID','RUC','FWD'][stats[2]] || '') : (p.position||'').replace(/_/g,' ').split(' ')[0];
+        const avg = stats ? stats[0] : null;
+        const dp = typeof DRAFT_PICKS !== 'undefined' ? DRAFT_PICKS[p.name] : null;
         const li = document.createElement('li');
         li.style.cssText = 'background:var(--bg-input);border-radius:12px;padding:0.6rem;display:flex;flex-direction:column;align-items:center;gap:0.35rem;text-align:center;border:1px solid var(--border)';
         li.innerHTML = `<div style="width:72px;height:72px;border-radius:8px;overflow:hidden;flex-shrink:0">${getPlayerPhoto(p,72)}</div>
             <div style="font-size:0.78rem;font-weight:600;line-height:1.2">${p.name}</div>
-            <div style="font-size:0.65rem;color:var(--text-secondary)">${getTeamBadge(p.team,'sm')}</div>
-            <div style="font-size:0.63rem;color:var(--text-secondary)">${(p.position||'').replace(/_/g,' ')}</div>`;
+            <div style="font-size:0.65rem;color:var(--text-secondary);display:flex;align-items:center;gap:3px">${getTeamBadge(p.team,'sm')}<span style="color:var(--accent);font-weight:700">${pos}</span></div>
+            ${isGold && avg ? `<div style="font-size:0.65rem;color:var(--accent2);font-weight:700">avg ${avg} pts</div>` : ''}
+            ${dp ? `<div style="font-size:0.6rem;color:var(--text-secondary)">Pick #${dp.p}</div>` : ''}`;
         list.appendChild(li);
     });
 }
