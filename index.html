@@ -1688,7 +1688,8 @@
 
     <div id="pageFixtures" class="page">
         <div class="section-title">📅 Fixtures</div>
-        <div id="fixturesRoundNav" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap"></div>
+        <div id="fixturesTabBar" style="display:flex;gap:0.35rem;overflow-x:auto;padding:0 0 0.5rem;margin-bottom:0.5rem;scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+    <div id="fixturesRoundNav" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap"></div>
         <div id="fixturesContent"></div>
     </div>
 
@@ -2655,6 +2656,13 @@ function renderFixtures() {
     container.innerHTML = '';
     const nav = document.getElementById('fixturesRoundNav');
     nav.innerHTML = '';
+    // Round quick-jump tabs
+    const tabBar = document.getElementById('fixturesTabBar');
+    if(tabBar){
+        const doneR=(allRounds||[]).filter(r=>r.round_number>0).sort((a,b)=>a.round_number-b.round_number);
+        const currentR=doneR.find(r=>r.status==='open'||r.status==='live')||doneR[doneR.length-1];
+        tabBar.innerHTML=doneR.map(r=>'<button onclick="fixturesSelectedRound='+r.id+';renderFixtures();" style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:'+(currentR&&r.id===currentR.id?'var(--accent)':'var(--bg-card)')+';color:'+(currentR&&r.id===currentR.id?'#000':'var(--text-secondary)')+';font-size:0.75rem;font-weight:600;cursor:pointer;white-space:nowrap">R'+r.round_number+'</button>').join('');
+    }
 
     // Show each round as a sorted points scoreboard
     const roundsWithScores = allRounds
@@ -2846,21 +2854,32 @@ async function openTeamModal(coachId) {
     const list = document.getElementById('modalPlayerList');
     list.innerHTML = '';
     const isGold = isGoldMember(coachId);
-    list.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem;list-style:none;padding:0;margin-top:0.5rem';
-    players.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+    const injuredNames = new Set((typeof window._injuredSet !== 'undefined' ? window._injuredSet : []));
+    list.style.cssText = 'list-style:none;padding:0;margin-top:0.5rem';
+    players.sort((a,b) => {
+        const da = DRAFT_PICKS?.[a.name];const db = DRAFT_PICKS?.[b.name];
+        if(da&&db)return da.p-db.p;if(da)return -1;if(db)return 1;
+        return a.name.localeCompare(b.name);
+    }).forEach(p => {
         const stats = typeof AFL_STATS !== 'undefined' ? AFL_STATS[p.name] : null;
-        const pos = stats ? (['','DEF','MID','RUC','FWD'][stats[2]] || '') : (p.position||'').replace(/_/g,' ').split(' ')[0];
+        const pos = stats ? (['','DEF','MID','RUC','FWD'][stats[2]] || '') : '';
         const avg = stats ? stats[0] : null;
         const dp = typeof DRAFT_PICKS !== 'undefined' ? DRAFT_PICKS[p.name] : null;
+        const inj = injuredNames.has(p.name.toLowerCase());
+        const nameParts = p.name.split(' ');
+        const abbrev = nameParts.length>1 ? nameParts[0][0]+'. '+nameParts.slice(1).join(' ') : p.name;
         const li = document.createElement('li');
-        li.style.cssText = 'background:var(--bg-input);border-radius:12px;padding:0.6rem;display:flex;flex-direction:column;align-items:center;gap:0.35rem;text-align:center;border:1px solid var(--border)';
-        li.innerHTML = `<div style="width:72px;height:72px;border-radius:8px;overflow:hidden;flex-shrink:0">${getPlayerPhoto(p,72)}</div>
-            <div style="font-size:0.78rem;font-weight:600;line-height:1.2">${p.name}</div>
-            <div style="font-size:0.65rem;color:var(--text-secondary);display:flex;align-items:center;gap:3px">${getTeamBadge(p.team,'sm')}<span style="color:var(--accent);font-weight:700">${pos}</span></div>
-            ${isGold && avg ? `<div style="font-size:0.65rem;color:var(--accent2);font-weight:700">avg ${avg} pts</div>` : ''}
-            ${dp ? `<div style="font-size:0.6rem;color:var(--text-secondary)">Pick #${dp.p}</div>` : ''}`;
+        li.style.cssText = 'display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0.6rem;border-bottom:1px solid var(--border)';
+        li.innerHTML = '<div style="width:40px;height:40px;border-radius:6px;overflow:hidden;flex-shrink:0">'+getPlayerPhoto(p,40)+'</div>'
+            +'<div style="flex:1;min-width:0">'
+            +'<div style="font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+abbrev+(inj?' <span style="color:var(--loss);font-size:0.7rem">❤️</span>':'')+'</div>'
+            +'<div style="font-size:0.65rem;color:var(--text-secondary);display:flex;align-items:center;gap:4px">'+getTeamBadge(p.team,'sm')+(pos?'<span style="color:var(--accent);font-weight:600">'+pos+'</span>':'')+(isGold&&avg?'<span style="color:var(--accent2)">'+avg+'avg</span>':'')+'</div>'
+            +'</div>'
+            +(dp?'<div style="text-align:right;flex-shrink:0"><div style="font-size:0.62rem;color:var(--text-secondary)">#'+dp.p+'</div></div>':'');
         list.appendChild(li);
     });
+    // Cache injured set for fast lookup
+    window._injuredSet = (allPlayers||[]).filter(p=>p.status==='injured'||p.status==='not-playing').map(p=>p.name.toLowerCase());
 }
 
 function closeTeamModal() {
@@ -4761,6 +4780,9 @@ async function loadLastTeam() {
 
     // ========== INJURY ROOM PAGE ==========
     async function loadInjuries() {
+    const injContent = document.getElementById('injuriesContent');
+    if (!injContent) return;
+    injContent.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-secondary)"><div class="spinner" style="margin:0 auto 0.5rem"></div>Loading injuries...</div>';
     const injContent = document.getElementById('injuriesContent');
     if (!injContent) return;
     try {
