@@ -14,6 +14,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* Prevent iOS auto-zoom on inputs */
+        input, select, textarea { font-size: 16px !important; }
 
         :root {
             --bg-primary: #0f0f1e;
@@ -1008,6 +1010,8 @@
         }
 
         .modal-player-list {
+            max-height: 50vh;
+            overflow-y: auto;
             list-style: none;
         }
 
