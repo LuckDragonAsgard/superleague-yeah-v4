@@ -1676,10 +1676,9 @@
                         <th>P</th>
                         <th>W</th>
                         <th>Pts</th>
-                        <th class="hide-mobile">Avg</th>
                         <th class="hide-mobile">PF</th>
-                        <th class="hide-mobile">L</th>
-                        <th class="hide-mobile">Win%</th>
+                        <th class="hide-mobile">Avg</th>
+                        <th class="hide-mobile">PA</th>
                         <th class="hide-mobile">Grade</th>
                     </tr>
                 </thead>
@@ -2552,8 +2551,13 @@ async function loadHomePage() {
     const roundAvg = roundScores.length ? roundScores.reduce((s, r) => s + parseFloat(r.points || 0), 0) / roundScores.length : 0;
     const statusColor = liveRound.status === 'live' ? 'var(--win)' : liveRound.status === 'completed' ? 'var(--text-secondary)' : 'var(--accent)';
     const statusLabel = liveRound.status === 'live' ? '\u{1F534} LIVE' : liveRound.status === 'completed' ? '\u2705 Completed' : '\u{1F512} Locked';
+    // Fetch my H2H matchup
+    let myMatchup=null;
+    if(currentCoach){try{const fx=await apiFetch('/api/sly-fixtures?round_id='+liveRound.id+'&coach_id='+currentCoach.id);myMatchup=fx&&fx[0]?fx[0]:null;}catch(e){}}
+
     let html = '<div style="background:var(--card);border-radius:14px;padding:1rem 1.2rem;margin-bottom:1rem;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:700;font-size:1.1rem;color:var(--text)">Round ' + liveRound.round_number + '</div>' + (liveRound.afl_round ? '<div style="font-size:0.75rem;color:var(--text-secondary)">AFL Round ' + liveRound.afl_round + '</div>' : '') + '</div><div style="color:' + statusColor + ';font-size:0.8rem;font-weight:600">' + statusLabel + '</div></div>';
-    if (roundScores.length > 0) {
+    if(myMatchup&&currentCoach){const isH=myMatchup.home_coach_id===currentCoach.id;const opp=allCoaches.find(c=>c.id===(isH?myMatchup.away_coach_id:myMatchup.home_coach_id));const mS=isH?myMatchup.home_score:myMatchup.away_score;const oS=isH?myMatchup.away_score:myMatchup.home_score;const hasSc=mS!=null&&oS!=null;const iW=hasSc&&parseFloat(mS)>parseFloat(oS);const tW=hasSc&&parseFloat(oS)>parseFloat(mS);html+='<div style="background:linear-gradient(135deg,rgba(0,168,107,0.1),rgba(0,212,255,0.05));border:2px solid var(--accent);border-radius:16px;padding:1rem 1.25rem;margin-bottom:1rem"><div style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem">⚔️ Your Round '+liveRound.round_number+' Match'+(myMatchup.match_name?' — '+myMatchup.match_name:'')+' </div><div style="display:flex;align-items:center;gap:0.75rem"><div style="flex:1;text-align:center">'+getJerseyHTML(currentCoach,44)+'<div style="font-weight:700;font-size:0.85rem;margin-top:0.35rem">'+currentCoach.team_name+'</div><div style="font-size:0.7rem;color:var(--text-secondary)">'+currentCoach.name+'</div>'+(hasSc?'<div style="font-size:1.5rem;font-weight:900;color:'+(iW?'var(--win)':tW?'var(--loss)':'var(--text)')+';margin-top:0.2rem">'+parseFloat(mS).toFixed(1)+'</div>':'')+'</div><div style="text-align:center;font-size:0.88rem;font-weight:700;color:var(--text-secondary)">'+(hasSc?'FINAL':'vs')+'</div><div style="flex:1;text-align:center">'+getJerseyHTML(opp||{color:'#888'},44)+'<div style="font-weight:700;font-size:0.85rem;margin-top:0.35rem">'+(opp?.team_name||'?')+'</div><div style="font-size:0.7rem;color:var(--text-secondary)">'+(opp?.name||'?')+'</div>'+(hasSc?'<div style="font-size:1.5rem;font-weight:900;color:'+(tW?'var(--win)':iW?'var(--loss)':'var(--text)')+';margin-top:0.2rem">'+parseFloat(oS).toFixed(1)+'</div>':'')+'</div></div></div>';}
+        if (roundScores.length > 0) {
         html += '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Round ' + liveRound.round_number + ' Scores</div><div style="background:var(--card);border-radius:14px;border:1px solid var(--border);margin-bottom:1.2rem;overflow:hidden">';
         roundScores.forEach((s, idx) => {
             const coach = allCoaches.find(c => c.id === s.coach_id);
@@ -2688,12 +2692,11 @@ function renderLadder() {
                 </div>${sBadge}
             </td>
             <td>${l.played}</td>
-            <td>${l.form.filter(f => f.result === 'W').length}</td>
-            <td class="pts-highlight">${pts.toFixed(1)}</td>
-            <td class="hide-mobile">${avg}</td>
+            <td>${l.wins}</td>
+            <td class="pts-highlight">${(l.wins||0)*4}</td>
             <td class="hide-mobile">${pf.toFixed(1)}</td>
-            <td class="hide-mobile">${formLosses}</td>
-            <td class="hide-mobile">${pct}</td>
+            <td class="hide-mobile">${avg}</td>
+            <td class="hide-mobile">${parseFloat(l.points_against||0).toFixed(1)}</td>
             <td class="hide-mobile">${getGradeHTML(c.id)}</td>
         `;
         tbody.appendChild(tr);
@@ -2701,103 +2704,10 @@ function renderLadder() {
     renderLadderTabs();
 }
 
-// ========== RENDER FIXTURES ==========
-let fixturesSelectedRound = null;
-function renderFixtures() {
-    const container = document.getElementById('fixturesContent');
-    container.innerHTML = '';
-    const nav = document.getElementById('fixturesRoundNav');
-    nav.innerHTML = '';
-    // Populate fixture round tab bar
-    const _ftb=document.getElementById('fixturesTabBar');
-    if(_ftb){
-        const _rds=(allRounds||[]).filter(function(r){return r.round_number>0;}).sort(function(a,b){return a.round_number-b.round_number;});
-        const _cur=fixturesSelectedRound||(_rds.find(function(r){return r.status==='open'||r.status==='live';})||_rds[_rds.length-1]||{}).id;
-        _ftb.innerHTML=_rds.map(function(r){return '<button onclick="fixturesSelectedRound='+r.id+';renderFixtures();" style="padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:'+(_cur===r.id?'var(--accent)':'var(--bg-card)')+';color:'+(_cur===r.id?'#000':'var(--text-secondary)')+';font-size:0.73rem;font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap">R'+r.round_number+'</button>';}).join('');
-    }
-
-    // Show each round as a sorted points scoreboard
-    const roundsWithScores = allRounds
-        .filter(r => allScores.some(s => s.round_id === r.id))
-        .sort((a, b) => b.round_number - a.round_number);
-
-    if (roundsWithScores.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No scores yet this season.</div>';
-        return;
-    }
-
-    // Default to most recent round
-    if (!fixturesSelectedRound || !roundsWithScores.find(r => r.id === fixturesSelectedRound)) {
-        fixturesSelectedRound = roundsWithScores[0].id;
-    }
-
-    // Round navigation pills
-    roundsWithScores.forEach(r => {
-        const pill = document.createElement('button');
-        pill.textContent = `R${r.round_number}`;
-        pill.className = r.id === fixturesSelectedRound ? 'filter-btn active' : 'filter-btn';
-        pill.onclick = () => { fixturesSelectedRound = r.id; renderFixtures(); };
-        nav.appendChild(pill);
-    });
-
-    // Show only the selected round
-    const roundsToShow = roundsWithScores.filter(r => r.id === fixturesSelectedRound);
-
-    roundsToShow.forEach(round => {
-        const section = document.createElement('div');
-        section.className = 'round-section';
-        const isLive = round.status === 'live';
-
-        section.innerHTML = `
-            <div class="round-header">
-                Round ${round.round_number}
-                ${isLive ? '<span class="live-tag">LIVE</span>' : ''}
-            </div>
-        `;
-
-        // Get all scores for this round, sorted highest to lowest
-        const roundScores = allScores
-            .filter(s => s.round_id === round.id)
-            .sort((a, b) => parseFloat(b.points || 0) - parseFloat(a.points || 0));
-
-        const avgPts = roundScores.length > 0
-            ? roundScores.reduce((sum, s) => sum + parseFloat(s.points || 0), 0) / roundScores.length
-            : 0;
-
-        const grid = document.createElement('div');
-        grid.className = 'matches-grid';
-
-        roundScores.forEach((s, idx) => {
-            const coach = allCoaches.find(c => c.id === s.coach_id);
-            if (!coach) return;
-            const pts = parseFloat(s.points || 0);
-            const isMe = currentCoach && s.coach_id === currentCoach.id;
-            const aboveAvg = pts >= avgPts;
-
-            const card = document.createElement('div');
-            card.className = `match-card`;
-            if (isMe) card.style.borderColor = 'var(--accent)';
-
-            card.innerHTML = `
-                <div class="match-teams" style="align-items:center">
-                    <div class="match-team" style="flex:1">
-                        <div class="match-team-name" style="display:flex;align-items:center;gap:0.4rem;overflow:hidden;min-width:0">
-                            <span style="color:var(--text-secondary);font-size:0.75rem;min-width:1.2rem;flex-shrink:0">${idx + 1}.</span>
-                            ${getJerseyHTML(coach, 24)} <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${coach.name}</span>
-                        </div>
-                        <div style="font-size:0.7rem;color:var(--text-secondary)">${coach.team_name}</div>
-                    </div>
-                    <div class="match-score" style="color:${aboveAvg ? 'var(--win)' : 'var(--loss)'}">${pts.toFixed(1)}</div>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
-
-        section.appendChild(grid);
-        container.appendChild(section);
-    });
-    upgradeFixtures();
-}
+// ========== RENDER FIXTURES (H2H) ==========
+let fixturesSelectedRound=null,_slyFixturesCache={};
+async function renderFixtures(){const container=document.getElementById('fixturesContent');const nav=document.getElementById('fixturesRoundNav');nav.innerHTML='';container.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-secondary)"><div class="spinner"></div></div>';const rr=allRounds.filter(r=>r.round_number>0).sort((a,b)=>a.round_number-b.round_number);if(!rr.length){container.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No rounds yet</div>';return;}if(!fixturesSelectedRound){const live=rr.find(r=>r.status==='live');const open=rr.find(r=>r.status==='open');const latest=rr.filter(r=>r.status==='completed').slice(-1)[0];fixturesSelectedRound=(live||open||latest)?.id||rr[0].id;}rr.forEach(r=>{const btn=document.createElement('button');btn.textContent='Round '+r.round_number;btn.style.cssText='padding:0.35rem 0.85rem;border-radius:20px;border:1px solid '+(r.id===fixturesSelectedRound?'var(--accent)':'var(--border)')+';background:'+(r.id===fixturesSelectedRound?'var(--accent)':'var(--card)')+';color:'+(r.id===fixturesSelectedRound?'#000':'var(--text)')+';font-size:0.78rem;cursor:pointer;font-weight:'+(r.id===fixturesSelectedRound?700:400)+';white-space:nowrap';btn.onclick=()=>{fixturesSelectedRound=r.id;renderFixtures();};nav.appendChild(btn);});setTimeout(()=>nav.querySelector('[style*="var(--accent)"]')?.scrollIntoView({block:'nearest',inline:'center'}),50);const round=rr.find(r=>r.id===fixturesSelectedRound);if(!round)return;let fixtures=_slyFixturesCache[round.id];if(!fixtures){try{fixtures=await apiFetch('/api/sly-fixtures?round_id='+round.id);_slyFixturesCache[round.id]=fixtures;}catch(e){fixtures=[];}}const isLive=round.status==='live';const isCompleted=round.status==='completed';let html='<div style="margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem"><span style="font-size:1rem;font-weight:700;color:var(--text)">Round '+round.round_number+'</span>'+(isLive?'<span class="live-tag" style="font-size:0.7rem">🔴 LIVE</span>':isCompleted?'<span style="font-size:0.7rem;color:var(--text-secondary);background:var(--card);padding:2px 8px;border-radius:10px">✅ Final</span>':'<span style="font-size:0.7rem;color:var(--accent);background:rgba(0,168,107,0.1);padding:2px 8px;border-radius:10px">🔒 Open</span>')+'</div>';if(!fixtures.length){html+='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No fixtures set</div>';container.innerHTML=html;return;}const sorted=[...fixtures].sort((a,b)=>{const aM=currentCoach&&(a.home_coach_id===currentCoach.id||a.away_coach_id===currentCoach.id);const bM=currentCoach&&(b.home_coach_id===currentCoach.id||b.away_coach_id===currentCoach.id);return bM-aM;});sorted.forEach(f=>{const isMe=currentCoach&&(f.home_coach_id===currentCoach.id||f.away_coach_id===currentCoach.id);const hS=f.home_score!=null?parseFloat(f.home_score).toFixed(1):null;const aS=f.away_score!=null?parseFloat(f.away_score).toFixed(1):null;const has=hS!==null&&aS!==null;const hW=has&&parseFloat(hS)>parseFloat(aS);const aW=has&&parseFloat(aS)>parseFloat(hS);const hC=allCoaches.find(c=>c.id===f.home_coach_id);const aC=allCoaches.find(c=>c.id===f.away_coach_id);html+='<div style="background:var(--card);border-radius:14px;padding:1rem 1.25rem;margin-bottom:0.6rem;border:2px solid '+(isMe?'var(--accent)':'var(--border)')+'"><div style="text-align:center;font-size:0.68rem;color:'+(isMe?'var(--accent)':'var(--border)')+';margin-bottom:0.5rem;cursor:pointer" onclick="nameFixture('+f.id+')">'+(f.match_name||'Name this match...')+'</div><div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem"><div style="flex:1;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:0.4rem">'+getJerseyHTML(hC||{color:'#888'},44)+'</div><div style="font-weight:'+(hW?800:600)+';font-size:0.85rem;color:'+(hW?'var(--win)':aW?'var(--text-secondary)':'var(--text)')+'">'+( f.home_team||f.home_name)+'</div><div style="font-size:0.72rem;color:var(--text-secondary)">'+f.home_name+'</div>'+(has?'<div style="font-size:1.5rem;font-weight:900;color:'+(hW?'var(--win)':aW?'var(--loss)':'var(--text)')+';margin-top:0.3rem">'+hS+'</div>':'')+'</div><div style="text-align:center;padding:0 0.5rem"><div style="font-size:0.9rem;font-weight:700;color:var(--text-secondary)">'+(has?'FINAL':'vs')+'</div>'+(isMe?'<div style="font-size:0.65rem;margin-top:0.2rem;color:var(--accent);font-weight:700">YOUR MATCH</div>':'')+'</div><div style="flex:1;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:0.4rem">'+getJerseyHTML(aC||{color:'#888'},44)+'</div><div style="font-weight:'+(aW?800:600)+';font-size:0.85rem;color:'+(aW?'var(--win)':hW?'var(--text-secondary)':'var(--text)')+'">'+(f.away_team||f.away_name)+'</div><div style="font-size:0.72rem;color:var(--text-secondary)">'+f.away_name+'</div>'+(has?'<div style="font-size:1.5rem;font-weight:900;color:'+(aW?'var(--win)':hW?'var(--loss)':'var(--text)')+';margin-top:0.3rem">'+aS+'</div>':'')+'</div></div></div>';});container.innerHTML=html;}
+async function nameFixture(id){const name=prompt('Name this match:');if(name===null)return;try{await apiFetch('/api/sly-fixtures/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({match_name:name.trim()||null})});_slyFixturesCache={};renderFixtures();}catch(e){}}
 
 // ========== RENDER TEAMS ==========
 function renderTeams() {
