@@ -821,6 +821,23 @@
 
         .coach-cell-name { font-weight: 600; }
         .coach-cell-team { font-size: 0.7rem; color: var(--text-secondary); }
+        /* Override proxy CSS for landscape team logos - higher specificity wins !important fight */
+        .coach-cell img.coach-logo-img {
+            height: auto !important;
+            width: auto !important;
+            max-width: 110px !important;
+            max-height: 60px !important;
+            min-height: unset !important;
+            min-width: unset !important;
+        }
+        /* Player photos - bigger in squad/picks context */
+        .pick-slot-row .player-photo,
+        .team-card-players .player-photo,
+        .pool-player-row .player-photo {
+            min-width: 56px !important;
+            min-height: 56px !important;
+        }
+
 
         .form-dots {
             display: flex;
@@ -2289,7 +2306,7 @@ function getJerseyHTML(coach, size) {
     size = size || 32; size = Math.round(size * 1.85);
     if (coach.logo_url) {
         const fallbackColor = coach.color || '#888888';
-        return `<img src="${coach.logo_url}" width="${size}" height="${size}" style="object-fit:contain;display:inline-block;vertical-align:middle;background:transparent;max-width:${size}px;flex-shrink:0" alt="" onerror="this.style.display='none';this.insertAdjacentHTML('afterend',getJerseySVG('${fallbackColor}',${size}))">`;
+        return `<img src="${coach.logo_url}" class="coach-logo-img" style="height:${Math.round(size*0.5)}px;width:auto;max-width:${Math.round(size*1.6)}px;object-fit:contain;display:inline-block;vertical-align:middle;background:transparent;flex-shrink:0" alt="" onerror="this.style.display='none';this.insertAdjacentHTML('afterend',getJerseySVG('${fallbackColor}',${size}))">`;
     }
     if (!coach.color) return '<span style="opacity:0.5">👤</span>';
     return getJerseySVG(coach.color, size);
@@ -4021,7 +4038,7 @@ function renderPool(){
     var s=getPlayerStats(p),taken=takenNames.has(p.name),dp=DRAFT_PICKS[p.name];
     var cop=dp?(allCoaches||[]).find(function(c){return c.id===dp.c;}):null;
     return '<div class="pool-player-row '+(taken?'taken':'')+(recNames.has(p.name)?' recommended':'')+'" data-pname="'+p.name.replace(/"/g,'&quot;')+'" onclick="showPlayerDraftInfo(this.dataset.pname)">'
-      +getPlayerPhoto(p,32)+'<div style="flex:1;min-width:0"><div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.name+'</div>'
+      +getPlayerPhoto(p,56)+'<div style="flex:1;min-width:0"><div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.name+'</div>'
       +'<div style="font-size:0.72rem;color:var(--text-secondary);display:flex;align-items:center;gap:0.3rem">'+getTeamBadge(p.team,'sm')+' '+getPosTag(s)+(taken?'<span style="color:var(--accent2);font-weight:600">Pick #'+dp.p+'</span>':'')+'</div></div>'
       +(taken&&cop?'<div style="text-align:right">'+getJerseyHTML(cop,16)+'<div style="font-size:0.65rem;color:var(--text-secondary);margin-top:2px">'+cop.name+'</div></div>':'')
       +'<div class="pool-stat"><div class="pool-stat-val">'+(s[0]||'&mdash;')+'</div><div class="pool-stat-label">AVG</div></div>'
@@ -5349,147 +5366,5 @@ async function postRoundRecapToChat(roundId){const recap=generateRoundRecap(roun
 </script>
 <button class="export-btn" onclick="openExportModal()" title="Share">&#128247;</button>
 <div class="export-modal" id="exportModal" onclick="if(event.target===this)closeExportModal()"><div class="export-modal-content"><h3>Share Screenshot</h3><button class="export-modal-btn" onclick="exportPage('ladder')">Ladder</button><button class="export-modal-btn" onclick="exportPage('fixtures')">Fixtures</button><button class="export-modal-btn" onclick="exportPage('stats')">Stats</button><button class="export-modal-btn" onclick="exportPage('h2h')">Head to Head</button><button class="export-modal-btn" onclick="closeExportModal()" style="color:var(--text-secondary)">Cancel</button></div></div>
-
-<!-- v4-extras patch (2026-04-25) — Roster + Activity + Swaps + Change PIN -->
-<style id="sly-extras-style">
-.slyx-fab{position:fixed;right:14px;bottom:80px;z-index:9999;background:#00d4ff;color:#000;border:none;border-radius:24px;padding:10px 16px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.4);cursor:pointer;font-size:13px;font-family:system-ui,sans-serif}
-.slyx-fab:hover{background:#33dfff}
-.slyx-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:none;justify-content:center;align-items:center;padding:14px}
-.slyx-modal.open{display:flex}
-.slyx-card{background:#1a1f2a;color:#e6edf3;width:100%;max-width:500px;max-height:90vh;overflow:auto;border-radius:14px;padding:18px;font-family:system-ui,sans-serif;border:1px solid #2a3a55}
-.slyx-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
-.slyx-tab{padding:6px 10px;border-radius:8px;background:#202838;cursor:pointer;font-size:12px;font-weight:600;border:none;color:#e6edf3}
-.slyx-tab.active{background:#00d4ff;color:#000}
-.slyx-close{float:right;background:transparent;border:none;color:#e6edf3;font-size:22px;cursor:pointer;line-height:1;margin-top:-6px}
-.slyx-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #2a3a55;font-size:13px;gap:8px}
-.slyx-row .pos{color:#7d8aa1;width:40px;font-weight:600;flex-shrink:0}
-.slyx-row .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.slyx-row .team{color:#7d8aa1;font-size:11px}
-.slyx-row .meta{color:#7d8aa1;font-size:11px;flex-shrink:0}
-.slyx-section{margin-top:12px;font-size:11px;color:#7d8aa1;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
-.slyx-coach-pick{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
-.slyx-coach-pick button{font-size:11px;padding:4px 8px;border-radius:6px;background:#2a3a55;color:#e6edf3;border:none;cursor:pointer}
-.slyx-coach-pick button.active{background:#00d4ff;color:#000}
-.slyx-input{width:100%;padding:8px;border-radius:6px;border:1px solid #2a3a55;background:#0d1117;color:#e6edf3;font-size:14px;margin:4px 0;box-sizing:border-box}
-.slyx-btn{padding:8px 14px;border-radius:8px;background:#00d4ff;color:#000;border:none;font-weight:700;cursor:pointer;margin-top:6px}
-.slyx-msg{padding:8px;border-radius:6px;margin-top:8px;font-size:13px}
-.slyx-msg.ok{background:#1f3a2a;color:#7ee5b3}
-.slyx-msg.err{background:#3a1f1f;color:#ff8a8a}
-.slyx-event{padding:8px 0;border-bottom:1px solid #2a3a55;font-size:13px}
-.slyx-event .who{font-weight:600;color:#00d4ff}
-.slyx-event .when{color:#7d8aa1;font-size:11px}
-</style>
-<button class="slyx-fab" id="slyxFab" onclick="slyxOpen()">⭐ v4 Extras</button>
-<div class="slyx-modal" id="slyxModal" onclick="if(event.target===this)slyxClose()">
-  <div class="slyx-card">
-    <button class="slyx-close" onclick="slyxClose()">×</button>
-    <div class="slyx-tabs">
-      <button class="slyx-tab active" data-tab="roster" onclick="slyxTab('roster')">Rosters</button>
-      <button class="slyx-tab" data-tab="activity" onclick="slyxTab('activity')">Activity</button>
-      <button class="slyx-tab" data-tab="swaps" onclick="slyxTab('swaps')">Swaps</button>
-      <button class="slyx-tab" data-tab="pin" onclick="slyxTab('pin')">Change PIN</button>
-    </div>
-    <div id="slyxRoster"></div>
-    <div id="slyxActivity" style="display:none">Loading…</div>
-    <div id="slyxSwaps" style="display:none">Loading…</div>
-    <div id="slyxPin" style="display:none">
-      <div class="slyx-section">Change your PIN</div>
-      <input class="slyx-input" id="slyxPinCoach" placeholder="Your coach name (e.g. Josh)" />
-      <input class="slyx-input" id="slyxPinCurrent" placeholder="Current PIN" type="password" />
-      <input class="slyx-input" id="slyxPinNew" placeholder="New PIN (4+ chars)" type="password" />
-      <button class="slyx-btn" onclick="slyxChangePin()">Change PIN</button>
-      <div id="slyxPinMsg"></div>
-    </div>
-  </div>
-</div>
-<script>
-(function(){
-  const API = 'https://sly-api.pgallivan.workers.dev';
-  let coaches = [];
-  let activeCoachId = null;
-  const ago = (iso) => {
-    if (!iso) return '';
-    const ms = Date.now() - new Date(iso).getTime();
-    const m = Math.floor(ms/60000);
-    if (m < 1) return 'just now';
-    if (m < 60) return m + 'm ago';
-    const h = Math.floor(m/60);
-    if (h < 24) return h + 'h ago';
-    return Math.floor(h/24) + 'd ago';
-  };
-  window.slyxOpen = () => { document.getElementById('slyxModal').classList.add('open'); slyxLoadRoster(); };
-  window.slyxClose = () => document.getElementById('slyxModal').classList.remove('open');
-  window.slyxTab = (t) => {
-    document.querySelectorAll('.slyx-tab').forEach(x => x.classList.toggle('active', x.dataset.tab === t));
-    ['roster','activity','swaps','pin'].forEach(p => {
-      document.getElementById('slyx' + p.charAt(0).toUpperCase() + p.slice(1)).style.display = (t === p) ? 'block' : 'none';
-    });
-    if (t === 'activity') slyxLoadActivity();
-    if (t === 'swaps') slyxLoadSwaps();
-  };
-  async function slyxLoadRoster() {
-    const root = document.getElementById('slyxRoster');
-    if (!coaches.length) {
-      root.innerHTML = 'Loading…';
-      coaches = await (await fetch(API + '/api/coaches')).json();
-    }
-    if (!activeCoachId) activeCoachId = coaches[0]?.id;
-    let html = '<div class="slyx-coach-pick">';
-    coaches.forEach(c => { html += '<button class="' + (c.id === activeCoachId ? 'active' : '') + '" onclick="slyxPickCoach(' + c.id + ')">' + c.name + '</button>'; });
-    html += '</div><div id="slyxRosterBody">Loading roster…</div>';
-    root.innerHTML = html;
-    slyxLoadPicks();
-  }
-  window.slyxPickCoach = (id) => { activeCoachId = id; slyxLoadRoster(); };
-  async function slyxLoadPicks() {
-    const picks = await (await fetch(API + '/api/draft-picks?coach=' + activeCoachId)).json();
-    const body = document.getElementById('slyxRosterBody');
-    if (!body) return;
-    const draft = picks.filter(p => p.acquisition_type === 'draft' && !p.delisted);
-    const myMan = picks.filter(p => p.acquisition_type === 'my_man' && !p.delisted);
-    const fa = picks.filter(p => p.acquisition_type === 'free_agent' && !p.delisted);
-    const sec = (label, list) => list.length ? '<div class="slyx-section">' + label + ' (' + list.length + ')</div>' + list.map(p => '<div class="slyx-row"><span class="pos">#' + (p.overall_pick||'-') + '</span><span class="name">' + (p.player_name || p.player_id.slice(0,8)) + ' <span class="team">' + (p.player_team||'') + '</span></span></div>').join('') : '';
-    body.innerHTML = sec('Draft picks', draft) + sec('"My Man" picks', myMan) + sec('Free agents', fa);
-  }
-  async function slyxLoadActivity() {
-    const root = document.getElementById('slyxActivity');
-    root.innerHTML = 'Loading…';
-    const events = await (await fetch(API + '/api/activity-feed?limit=50')).json();
-    if (!events.length) { root.innerHTML = '<em>No activity yet.</em>'; return; }
-    root.innerHTML = events.map(e => {
-      const who = e.actor_name ? '<span class="who">' + e.actor_name + '</span> (' + (e.team_name || '') + ')' : 'System';
-      const desc = (e.event_type || '').replace(/_/g, ' ');
-      return '<div class="slyx-event">' + who + ' — ' + desc + ' <div class="when">' + ago(e.created_at) + '</div></div>';
-    }).join('');
-  }
-  async function slyxLoadSwaps() {
-    const root = document.getElementById('slyxSwaps');
-    root.innerHTML = 'Loading…';
-    const swaps = await (await fetch(API + '/api/swap-requests')).json();
-    if (!swaps.length) { root.innerHTML = '<em>No swap requests on record.</em>'; return; }
-    root.innerHTML = swaps.map(s => {
-      return '<div class="slyx-event"><span class="who">' + (s.coach_name || 'Coach ' + s.coach_id) + '</span> R' + s.round + ' — ' + (s.suggested_dnp_slot || '?') + ' → ' + (s.suggested_emergency_slot || '?') + ' <span class="meta">' + s.status + '</span><div class="when">' + (s.comment || '') + ' · ' + ago(s.created_at) + '</div></div>';
-    }).join('');
-  }
-  window.slyxChangePin = async () => {
-    const name = document.getElementById('slyxPinCoach').value.trim();
-    const current = document.getElementById('slyxPinCurrent').value.trim();
-    const next = document.getElementById('slyxPinNew').value.trim();
-    const msg = document.getElementById('slyxPinMsg');
-    if (!name || !current || !next) { msg.className = 'slyx-msg err'; msg.textContent = 'All fields required'; return; }
-    if (!coaches.length) coaches = await (await fetch(API + '/api/coaches')).json();
-    const coach = coaches.find(c => c.name.toLowerCase() === name.toLowerCase());
-    if (!coach) { msg.className = 'slyx-msg err'; msg.textContent = 'Coach not found'; return; }
-    const r = await fetch(API + '/api/coaches/' + coach.id + '/pin', {
-      method: 'PATCH', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ current_pin: current, new_pin: next })
-    });
-    const j = await r.json();
-    if (j.ok) { msg.className = 'slyx-msg ok'; msg.textContent = 'PIN changed.'; document.getElementById('slyxPinCurrent').value=''; document.getElementById('slyxPinNew').value=''; }
-    else { msg.className = 'slyx-msg err'; msg.textContent = j.error || 'Failed'; }
-  };
-})();
-</script>
-
 </body>
 </html>
