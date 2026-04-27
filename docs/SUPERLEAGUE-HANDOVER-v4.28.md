@@ -1,43 +1,78 @@
 # Superleague v4 — Full Handover (v4.28)
 
 **Live:** https://superleague.streamlinewebapps.com — green badge top-right shows current version
-**Date:** 2026-04-27 (handoff between Claude accounts due to usage limit)
-**Status:** v4.28 deployed and verified live
+**Date:** 2026-04-27 (SECOND handoff between Claude accounts today, both due to usage limits)
+**Status:** v4.28 deployed and verified live, GitHub source-of-truth populated and verified
 
 ---
 
-## ⚠️ START HERE — context for the new Claude account
+## START HERE — context for the new Claude account
 
-You're picking up after Mona/Paddy ran out of usage on the previous account. The previous Claude (Opus 4.7) shipped v4.19 → v4.28 today — full bug-hunt across every tab, all five of Paddy's flagged issues fixed, plus 4 more. **Live site is stable on v4.28**, no urgent fires.
+You are at least the 3rd Claude on this project today. Sequence so far:
 
-**Source of truth changed today:** everything moved off Google Drive into this GitHub repo (`LuckDragonAsgard/superleague-yeah-v4`). Drive copies are deprecated and Mona will delete them manually.
+1. **Claude #1 (Opus 4.7, prior account)** — shipped v4.19 -> v4.28, full bug-hunt, moved source-of-truth from Drive to GitHub repo `LuckDragonAsgard/superleague-yeah-v4`, set up `gh-push.pgallivan.workers.dev` relay, set up `asgard-vault.pgallivan.workers.dev` for secrets. Hit usage limit.
+2. **Claude #2 (different account)** — verified everything was working: confirmed live site on v4.28 (HTML response 384KB, banner shows v4.28), confirmed all GitHub files present at correct sizes (sly-app-v2.js 32,452B, sly-deploy.js 3,547B, gh-push.js 3,018B, README.md 1,688B, this doc 11,463B). Could not delete old Drive copies — Claude is hard-blocked from destructive Drive actions even with permission. Hit usage limit before pushing this handover update.
+3. **Claude #3 (you, fresh account)** — picking up here. Live site is stable on v4.28, no urgent fires. GitHub repo is the source of truth.
 
 **First thing to do when you resume:**
+
 1. Read this whole doc.
 2. Hit https://superleague.streamlinewebapps.com — confirm green banner top-right shows v4.28 (or whatever's current).
-3. Ask Paddy what he wants to work on. Don't pre-emptively fix things — he had specific priorities (see "Suggested next steps" below).
+3. Ask Paddy what he wants to work on. Don't pre-emptively fix things.
 
-**Important behaviour rules** (from memory of previous Claude — re-applying so nothing falls through the cracks):
+**Important behaviour rules:**
+
 - Save NEW code/config to GitHub via `gh-push.pgallivan.workers.dev` (POST `{owner, repo, path, content, message}` JSON, include a Mozilla User-Agent or CF blocks). NOT to Drive.
-- Drive is only for live-edit Office files now (.docx, .xlsx, .pptx).
+- Drive is only for live-edit Office files now (.docx, .xlsx, .pptx) plus Paddy's local Drive copy of sly-app-v2.js for hand-editing.
 - Secrets live in `asgard-vault.pgallivan.workers.dev` (X-Pin auth required). Never commit secret values to GitHub — secret scanning will reject the push.
 - Paddy doesn't want to do dashboard work. Always deploy/configure via API/code.
 - Coaches must NEVER need a hard refresh — the patch's MutationObserver + 2.5s setInterval handles re-renders.
 - Sort out popups without asking.
+- Claude cannot delete files on Paddy's Drive — destructive actions are guardrailed even with permission. Surface one-click Drive links instead.
 
 ---
 
-## TL;DR for the next session
+## Last verified state (2026-04-27, by Claude #2)
 
-The v4 site is live, stable, and substantially improved over yesterday's v4.18. All five issues Paddy flagged ("things I kept asking for and never happened") are fixed. A full bug hunt of every tab found 4 more issues — all also fixed. v4.28 adds a `mix-blend-mode: multiply` trick for the Trophy tab.
+| Check | Result |
+|---|---|
+| https://superleague.streamlinewebapps.com loads | OK — HTTP 200, 384KB HTML response |
+| Green version banner shows v4.28 | OK |
+| GitHub `sly-app-v2.js` present | OK — 32,452 bytes |
+| GitHub `sly-deploy.js` present | OK — 3,547 bytes (secrets redacted) |
+| GitHub `gh-push.js` present | OK — 3,018 bytes |
+| GitHub `README.md` present | OK — 1,688 bytes |
+| GitHub `docs/SUPERLEAGUE-HANDOVER-v4.28.md` present | OK — 11,463 bytes (this doc, pre-update) |
+| Drive copies deleted | PENDING — see "Outstanding manual tasks" |
+| Coach logo white tiles permanent fix | PENDING — needs Lovable re-upload |
 
-**To deploy a new version:**
-1. Edit `G:\My Drive\sly-app-v2.js` (or whichever copy is newest in Drive)
-2. Bump `var VER='vX.YY';` near the top of the patch script
-3. Either run `node "G:\My Drive\sly-login-deploy.js"` locally OR POST raw to the relay (see below)
-4. Hard-refresh https://superleague.streamlinewebapps.com — green badge should flip to new version
+---
+
+## Outstanding manual tasks (only Paddy can do)
+
+### 1. Delete old Drive copies
+
+Open https://drive.google.com/drive/folders/0AMdw_CgtxddaUk9PVA, sort by Name, multi-select all `sly-*.js` files, hit Delete. Specifically these are obsolete:
+
+- `sly-app-v2.js` v4.18 (yesterday's copy)
+- `sly-app-v2.js` v4.21
+- `sly-app-v2.js` v4.22
+- `sly-app-v2.js` v4.27
+- `sly-deploy.js` (now in GitHub)
+- `sly-login-deploy.js` (obsolete — use direct curl deploy)
+- `sly-app-worker-v2.js` (orphan in outputs folder)
+- Optionally `SUPERLEAGUE-HANDOVER-v4.28.md` Drive backup (now in GitHub)
+
+### 2. Re-upload coach logos as transparent PNGs in Lovable
+
+Permanent fix for the Trophy white-tile problem. v4.28 papers over it with `mix-blend-mode: multiply` but the underlying issue is the coach `logo.webp` files have baked-in white pixels (400×209 rectangular logos, not transparent guernsey PNGs). Re-upload via Lovable's coach settings.
+
+---
+
+## Deploy commands
 
 **Direct relay deploy (no Node needed):**
+
 ```
 curl -X POST "https://sly-deploy.pgallivan.workers.dev/deploy/sly-app" \
   -H "Authorization: Bearer <<REDACTED — fetch from asgard-vault: SLY_DEPLOY_SECRET>>" \
@@ -45,67 +80,35 @@ curl -X POST "https://sly-deploy.pgallivan.workers.dev/deploy/sly-app" \
   --data-binary @sly-app-v2.js
 ```
 
----
+**Push to GitHub via gh-push:**
 
-## What v4.19 → v4.28 fixed
+```
+curl -X POST "https://gh-push.pgallivan.workers.dev/" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Mozilla/5.0" \
+  -d "$(jq -n --rawfile c sly-app-v2.js '{owner:"LuckDragonAsgard",repo:"superleague-yeah-v4",path:"sly-app-v2.js",content:$c,message:"vX.YY"}')"
+```
 
-### Original 5 issues (Paddy's list)
+(`gh-push` reads `GITHUB_TOKEN` from its own worker env — don't put it in the body.)
 
-| # | Issue | Fix |
-|---|---|---|
-| 1 | No team jumper in The Fund | Coach jumpers prepended to each Paid/Unpaid row, scoped to Fund page only, dedup logic prevents duplicates |
-| 2 | Gold details missing ($50, auto-draft, $5/wk) | Full gold-gradient card injected after any "Gold/Gold Tier" header with: auto-draft at start of year, AI recs, best-for-team sort, gold badge, early access — $50 one-off + **+$5/week** for Auto Team Selection |
-| 3 | No player pics on Home tab | `injectHomePlayerPics()` matches surnames to `/api/players` champid → AFL headshot, injected as 24px circular pic before each name |
-| 4 | Jumpers in Fixtures dark and small | Universal CSS shows team-logos as full-color portrait guernseys (60×76 base, 72×90 in fixtures, 80×100 in welcome/header) — **no white tile background** |
-| 5 | Match Day won't load scores | Aggressive injection: replaces "Could not load scores" placeholders OR injects Round 6 leaderboard after Match Day header (only when on Match Day page) |
-
-### Bug-hunt additions (after walking every tab)
-
-| Tab | Issue | Fix |
-|---|---|---|
-| Ladder | Rank column showed "Indefined" / "undefined" | `fixLadderRank()` finds `.rank-badge` cells, replaces with 1, 2, 3… in viewport order |
-| Banter | Coach jumpers (60×76) overlapping coach names | Specific CSS for `[class*="banter"]` shrinks jumpers to 32×40 with 8px right margin |
-| Home/Draft | Empty player avatar circles next to surnames | `fillPlayerAvatars()` finds small empty circular elements, looks up adjacent name in `_pBaseByName`, injects headshot |
-| Trophy | White tiles around tiny coach jumpers | Tracked source: coach `logo.webp` files in supabase have **baked-in white pixels** (400×209 rectangular logos, not transparent guernsey PNGs). v4.28 applies `mix-blend-mode: multiply` so the white blends into the dark page bg — significantly reduces the white tile look. **Permanent fix is re-uploading those coach logos as transparent PNGs in Lovable's coach settings.** |
-
-### Other still-working features kept from yesterday
-
-- Login (sly-app intercepts `/api/login`, verifies via PIN PATCH trick)
-- Banter chat forwards to `/api/messages`
-- Player headshots in Match Day scoreboard (138/492 players have champid)
-- CORS preflight for any `/api/*`
-- Always-on green version banner top-right
-- No-cache headers (Cache-Control + CDN-Cache-Control + Cloudflare-CDN-Cache-Control)
-- SLY Extras modal (Rosters / Activity / Swaps / Change PIN tabs)
+**Critical relay quirks:**
+- `sly-deploy` does `await req.text()` and uses the body raw. NEVER JSON-wrap. Send `Content-Type: application/javascript`.
+- `gh-push` requires a User-Agent header; CF default UA is sometimes blocked, use Mozilla.
+- `gh-push` `content` field takes **raw UTF-8 text**, not base64 — the relay base64-encodes internally before forwarding to GitHub's Contents API. Pre-encoding causes double-encoding. (Older notes saying `<base64>` are wrong; verified 2026-04-27.)
 
 ---
 
-## Known remaining issues for next session
+## Known remaining issues
 
-1. **PA column in Ladder is always 0.0** — this is a Lovable/data calculation bug, not patchable from injected JS. Would need either: H2H opponent score lookup added to `/api/scores`, or fix in the underlying React code.
-
-2. **Trophy white tiles** — v4.28 makes them less prominent via mix-blend-mode but doesn't eliminate. Permanent fix: re-upload coach logos as transparent PNGs.
-
-3. **Some Home tab player slots still empty** — the avatar fill logic skips elements that are too small or have no nearby name. Worth a deeper DOM inspection per slot type.
-
-4. **Drive cleanup** — there are now several copies of `sly-app-v2.js` in `G:\My Drive\`:
-   - v4.18 (2026-04-26 from yesterday)
-   - v4.21
-   - v4.22
-   - v4.27
-   - (v4.28 not yet uploaded — see "Drive copies" section below)
-
-   Delete the older 4 so the deploy script picks the right one. Claude can't delete files (safety guardrail).
-
-5. **Vercel auto-deploy broken since 2026-04-14** — `sly-app` proxy is in front so Vercel can be deleted. Old project: `prj_I025dOrQcB5sUagLjZSK0o4PRctE` / `team_qXLAiOqq0EztMXKK8CXX6JhT`.
-
-6. **GitHub org migration** — `PaddyGallivan` → `LuckDragonAsgard` in progress.
-
-7. **Historical `team_selections` R1–R6 (2,288 rows) not migrated** to D1.
-
-8. **Banter messages duplicated** in `/api/messages` — needs DB-level dedupe, not patch-fixable.
-
-9. **Player photo coverage** — only 138/492 players have champid in `/api/players`. Others stay as initials.
+1. **PA column in Ladder is always 0.0** — Lovable/data calculation bug, not patchable from injected JS.
+2. **Trophy white tiles** — v4.28 papers over with mix-blend-mode; permanent fix is re-uploading PNGs.
+3. **Some Home tab player slots still empty** — avatar fill logic skips elements that are too small or have no nearby name.
+4. **Drive cleanup** — see Outstanding manual tasks.
+5. **Vercel auto-deploy broken since 2026-04-14** — sly-app proxy is in front so Vercel can be deleted. Old project: `prj_I025dOrQcB5sUagLjZSK0o4PRctE` / `team_qXLAiOqq0EztMXKK8CXX6JhT`.
+6. **GitHub org migration** — `PaddyGallivan` -> `LuckDragonAsgard` in progress.
+7. **Historical `team_selections` R1–R6 (2,288 rows) not migrated to D1.**
+8. **Banter messages duplicated** in `/api/messages` — needs DB-level dedupe.
+9. **Player photo coverage** — only 138/492 players have champid in `/api/players`.
 
 ---
 
@@ -117,6 +120,10 @@ curl -X POST "https://sly-deploy.pgallivan.workers.dev/deploy/sly-app" \
 | App backup | https://sly-app.pgallivan.workers.dev |
 | API | https://sly-api.pgallivan.workers.dev |
 | Old site (read-only fallback) | https://superleagueyeah.online |
+| Deploy relay | https://sly-deploy.pgallivan.workers.dev/deploy/sly-app |
+| GitHub push relay | https://gh-push.pgallivan.workers.dev/ |
+| Secrets vault | https://asgard-vault.pgallivan.workers.dev (X-Pin auth) |
+| GitHub repo | https://github.com/LuckDragonAsgard/superleague-yeah-v4 |
 
 ---
 
@@ -125,40 +132,17 @@ curl -X POST "https://sly-deploy.pgallivan.workers.dev/deploy/sly-app" \
 | Thing | Value |
 |---|---|
 | CF Account ID | `a6f47c17811ee2f8b6caeb8f38768c20` |
-| CF Token (workers-only, for deploys) | `<<REDACTED — fetch from asgard-vault: CF_API_TOKEN>>` |
 | KV namespace (SLY_STATIC) | `4f427724561e48f682d4a7c6153d7124` |
 | D1 database | `8d0b8373-40ea-4174-bfd9-628b790abf92` |
 | sly-deploy relay URL | `https://sly-deploy.pgallivan.workers.dev/deploy/sly-app` |
-| Deploy secret | `<<REDACTED — fetch from asgard-vault: SLY_DEPLOY_SECRET>>` |
 | Old Supabase (read-only) | `hzkodmxrranessgbjjjl` |
 | Vercel team (orphaned) | `team_qXLAiOqq0EztMXKK8CXX6JhT` |
-| GitHub repo | `LuckDragonAsgard/superleague-yeah-v4` (was `PaddyGallivan/...`) |
+| GitHub repo | `LuckDragonAsgard/superleague-yeah-v4` |
 
-**Critical relay quirk:** the relay does `await req.text()` and uses the body **raw** as worker source. **Never JSON-wrap** the body. Send with `Content-Type: application/javascript`, body is the worker JS itself. JSON-wrapping causes CF to deploy the literal JSON as the worker → `Unexpected token ':'` error.
-
----
-
-## Worker structure (sly-app-v2.js)
-
-The worker is a single file with three parts:
-
-1. **`PATCH` template literal** — A `<script>` + `<style>` block that gets injected before `</body>` of every HTML response. Contains:
-   - CSS overrides for team jumpers, coach logos, player avatars
-   - JS functions: `injectPlayerPhotos`, `injectHomePlayerPics`, `fillPlayerAvatars`, `stripJumperWrappers`, `fixLadderRank`, `injectFundLogos`, `fillMatchDay`, `fixGold`
-   - MutationObserver re-runs all patches on DOM changes (300ms debounce)
-   - SLY Extras modal (Rosters/Activity/Swaps/Change PIN)
-   - Visible version banner top-right
-
-2. **`export default { fetch }`** — The Worker fetch handler:
-   - Handles `/api/login` POST (calls sly-api PIN PATCH trick)
-   - Forwards `/api/banter` and `/api/chat` to `/api/messages`
-   - Stubs `/api/team-selections`, `/api/match-day`, `/api/current-round` with `[]`
-   - Forwards all other `/api/*` to sly-api
-   - Serves the index.html from KV with PATCH injected, no-cache headers
-
-3. **Key patch behaviour:**
-   - Caches `/api/players`, `/api/coaches`, `/api/scores` in module-level vars (refresh every 30s)
-   - All patch functions are idempotent — safe to run repeatedly via MutationObserver
+Secret keys (all in asgard-vault, X-Pin auth):
+- `CF_API_TOKEN` — Cloudflare workers token (deploy)
+- `SLY_DEPLOY_SECRET` — bearer for sly-deploy relay
+- `GITHUB_TOKEN` — for gh-push worker (lives in worker env, callers don't pass it)
 
 ---
 
@@ -183,27 +167,24 @@ The worker is a single file with three parts:
 | Joe | Shabadoos | 1515 |
 | Georgrick | Team 1016 | 1616 |
 
-Coaches can change their own PIN via the SLY Extras widget (purple star bottom-right).
-
 ---
 
 ## Standing rules (Paddy's instructions)
 
-- **Never** ask Paddy to do dashboard work. Always deploy/configure via API/code.
+- Never ask Paddy to do dashboard work. Always deploy/configure via API/code.
 - Never write to the old Supabase site (`hzkodmxrranessgbjjjl`).
-- Coaches must NEVER have to refresh the page to see new changes — the MutationObserver + 2.5s setInterval handles that.
-- The old site (`superleagueyeah.online`) stays untouched and is the fallback.
-- Gold tier is `$50` (not $20 — that was a wrong hardcode, fixed via text-walker).
-- Save all files to **paddy@luckdragon.io** Google Drive (not pgallivan@outlook.com — global CLAUDE.md is stale).
+- Coaches must NEVER need a refresh — MutationObserver + 2.5s setInterval handles that.
+- Old site (`superleagueyeah.online`) stays untouched as fallback.
+- Gold tier is `$50` (not $20).
+- Save all NEW code to GitHub via gh-push relay. Drive is only for the local hand-edit copy and Office files.
+- Use paddy@luckdragon.io Drive (not pgallivan@outlook.com — global CLAUDE.md is stale).
 - "Sort out all popups without asking me" — global instruction.
 
 ---
 
-## Drive copies of sly-app-v2.js
+## Memory pointers for next Claude account
 
-All in `paddy@luckdragon.io` shared drive (parent ID `0AMdw_CgtxddaUk9PVA`):
+If conversation rolls to a 4th account, save these as memory on day one:
 
-- 2026-04-26: v4.18 (id `14w8dlO_czihvNCoS5L-jAzSZbPImTr4K`) — original from yesterday
-- 2026-04-27: v4.21 (id `1_euGjaaA4vQZlVQgbFalH1Y9mesEltwf`)
-- 2026-04-27: v4.22 (id `1PgGV3gWJFVVydlz6CkZPaHcKOhUKKNH4`)
-- 2026-04-27: v4.27 (id `1cnnJ0tokyp2Fo2V_NfncHko-59rwT-j
+- **superleague_v428.md** — "Superleague v4 is at v4.28, live at superleague.streamlinewebapps.com. Source of truth is GitHub `LuckDragonAsgard/superleague-yeah-v4`. Read `docs/SUPERLEAGUE-HANDOVER-v4.28.md` before doing anything."
+- **github_push_relay.md** — "For Paddy's repos: push via `
