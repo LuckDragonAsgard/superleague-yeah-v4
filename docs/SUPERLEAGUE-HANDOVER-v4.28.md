@@ -44,7 +44,7 @@ You are at least the 3rd Claude on this project today. Sequence so far:
 | GitHub `README.md` present | OK — 1,688 bytes |
 | GitHub `docs/SUPERLEAGUE-HANDOVER-v4.28.md` present | OK — 11,463 bytes (this doc, pre-update) |
 | Drive copies deleted | PENDING — see "Outstanding manual tasks" |
-| Coach logo white tiles permanent fix | PENDING — needs Lovable re-upload |
+| Coach logo white tiles permanent fix | RESOLVED — v4.28 mix-blend-mode is the final solution; Lovable is being deprecated, no re-upload happening |
 
 ---
 
@@ -63,9 +63,9 @@ Open https://drive.google.com/drive/folders/0AMdw_CgtxddaUk9PVA, sort by Name, m
 - `sly-app-worker-v2.js` (orphan in outputs folder)
 - Optionally `SUPERLEAGUE-HANDOVER-v4.28.md` Drive backup (now in GitHub)
 
-### 2. Re-upload coach logos as transparent PNGs in Lovable
+### 2. ~~Re-upload coach logos as transparent PNGs in Lovable~~ — DROPPED
 
-Permanent fix for the Trophy white-tile problem. v4.28 papers over it with `mix-blend-mode: multiply` but the underlying issue is the coach `logo.webp` files have baked-in white pixels (400×209 rectangular logos, not transparent guernsey PNGs). Re-upload via Lovable's coach settings.
+Paddy is migrating Superleague off Lovable to a new platform (2026-04-27). v4.28's `mix-blend-mode: multiply` trick is now the *final* solution for the Trophy white tiles, not a temporary papering-over. Don't propose Lovable-side fixes (coach logo re-upload, PA-column React fix, etc.) — they're abandonware.
 
 ---
 
@@ -100,14 +100,16 @@ curl -X POST "https://gh-push.pgallivan.workers.dev/" \
 
 ## Known remaining issues
 
-1. **PA column in Ladder is always 0.0** — Lovable/data calculation bug, not patchable from injected JS.
-2. **Trophy white tiles** — v4.28 papers over with mix-blend-mode; permanent fix is re-uploading PNGs.
-3. **Some Home tab player slots still empty** — avatar fill logic skips elements that are too small or have no nearby name.
+> **Lovable is being deprecated.** Items below tagged "(Lovable)" are upstream bugs in the platform Paddy is leaving — note them, don't fix them.
+
+1. **PA column in Ladder is always 0.0** — (Lovable) data calculation bug. Don't fix.
+2. **Trophy white tiles** — RESOLVED via v4.28 `mix-blend-mode: multiply`. Final solution.
+3. **Some Home tab player slots still empty** — avatar fill logic skips elements that are too small or have no nearby name. Worth a deeper DOM inspection if Paddy asks.
 4. **Drive cleanup** — see Outstanding manual tasks.
 5. **Vercel auto-deploy broken since 2026-04-14** — sly-app proxy is in front so Vercel can be deleted. Old project: `prj_I025dOrQcB5sUagLjZSK0o4PRctE` / `team_qXLAiOqq0EztMXKK8CXX6JhT`.
 6. **GitHub org migration** — `PaddyGallivan` -> `LuckDragonAsgard` in progress.
 7. **Historical `team_selections` R1–R6 (2,288 rows) not migrated to D1.**
-8. **Banter messages duplicated** in `/api/messages` — needs DB-level dedupe.
+8. **Banter messages duplicated** in `/api/messages` — (Lovable) needs DB-level dedupe. Don't fix.
 9. **Player photo coverage** — only 138/492 players have champid in `/api/players`.
 
 ---
@@ -184,7 +186,4 @@ Secret keys (all in asgard-vault, X-Pin auth):
 
 ## Memory pointers for next Claude account
 
-If conversation rolls to a 4th account, save these as memory on day one:
-
-- **superleague_v428.md** — "Superleague v4 is at v4.28, live at superleague.streamlinewebapps.com. Source of truth is GitHub `LuckDragonAsgard/superleague-yeah-v4`. Read `docs/SUPERLEAGUE-HANDOVER-v4.28.md` before doing anything."
-- **github_push_relay.md** — "For Paddy's repos: push via `
+If conversation rolls to a 4th account, save these as memory on day one
