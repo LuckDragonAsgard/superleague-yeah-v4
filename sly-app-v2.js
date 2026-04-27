@@ -102,7 +102,7 @@ div:has(img[src*="team-logos"]),span:has(img[src*="team-logos"]),
 (function(){
 'use strict';
 var API='/api';
-var VER='v4.28';
+var VER='v4.29';
 
 function ensureBanner(){
   if(document.getElementById('sly-ver-banner'))return;
@@ -135,9 +135,10 @@ function loadAll(){
   fetch(API+'/coaches').then(function(r){return r.json();}).then(function(c){_coaches=Array.isArray(c)?c:[];}).catch(function(){});
   fetch(API+'/scores').then(function(r){return r.json();}).then(function(s){_scores=Array.isArray(s)?s:[];}).catch(function(){});
 }
-loadAll();setInterval(loadAll,30000);
+loadAll();setInterval(loadAll,10000);
 
-function headshotUrl(champid){return 'https://s.afl.com.au/staticfile/AFL%20Tenant/AFL/Players/ChampIDImages/AFL/headshot/b/'+champid+'.png';}
+function headshotUrl(champid,season){return 'https://s.afl.com.au/staticfile/AFL%20Tenant/AFL/Players/ChampIDImages/AFL/'+(season||'2026014')+'/'+champid+'.png';}
+function setHeadshot(img,champid){img.onerror=function(){this.onerror=function(){this.onerror=null;this.style.display='none';};this.src=headshotUrl(champid,'2025014');};img.src=headshotUrl(champid);}
 
 function injectPlayerPhotos(){
   if(!_pmap)return;
@@ -152,7 +153,7 @@ function injectPlayerPhotos(){
     var player=_pmap[txt];
     if(!player||!player.champid)continue;
     var img=document.createElement('img');
-    img.src=headshotUrl(player.champid);
+    setHeadshot(img,player.champid);
     img.style.cssText='width:100%;height:100%;min-width:32px;min-height:32px;object-fit:cover;object-position:top center;border-radius:50%;display:block;background:#1f2937';
     img.onerror=function(){this.remove();};
     el.dataset.slyP='1';el.textContent='';el.appendChild(img);
@@ -172,7 +173,7 @@ function injectHomePlayerPics(){
     if(el.querySelector('img[src*="ChampIDImages"]'))continue;
     el.dataset.slyHP='1';
     var img=document.createElement('img');
-    img.src=headshotUrl(p.champid);img.alt=p.name;
+    setHeadshot(img,p.champid);img.alt=p.name;
     img.style.cssText='width:24px;height:24px;border-radius:50%;background:#1f2937;object-fit:cover;object-position:top center;vertical-align:middle;margin-right:6px;display:inline-block;flex-shrink:0';
     img.onerror=function(){this.remove();};
     el.insertBefore(img,el.firstChild);
@@ -211,7 +212,7 @@ function fillPlayerAvatars(){
     if(!p||!p.champid)return;
     el.dataset.slyAV='1';
     var img=document.createElement('img');
-    img.src=headshotUrl(p.champid);img.alt=p.name;
+    setHeadshot(img,p.champid);img.alt=p.name;
     img.style.cssText='width:100%;height:100%;min-width:100%;min-height:100%;object-fit:cover;object-position:top center;border-radius:50%;display:block;background:#1f2937';
     img.onerror=function(){this.remove();};
     el.style.borderRadius='50%';el.style.overflow='hidden';
