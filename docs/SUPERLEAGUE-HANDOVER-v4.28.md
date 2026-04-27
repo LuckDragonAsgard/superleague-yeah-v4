@@ -1,10 +1,29 @@
 # Superleague v4 — Full Handover (v4.28)
 
 **Live:** https://superleague.streamlinewebapps.com — green badge top-right shows current version
-**Date:** 2026-04-27
+**Date:** 2026-04-27 (handoff between Claude accounts due to usage limit)
 **Status:** v4.28 deployed and verified live
 
-> **Note on secrets:** All API tokens and deploy secrets in this doc are redacted. Pull live values from `asgard-vault.pgallivan.workers.dev` (requires X-Pin header). The keys to fetch are noted inline below.
+---
+
+## ⚠️ START HERE — context for the new Claude account
+
+You're picking up after Mona/Paddy ran out of usage on the previous account. The previous Claude (Opus 4.7) shipped v4.19 → v4.28 today — full bug-hunt across every tab, all five of Paddy's flagged issues fixed, plus 4 more. **Live site is stable on v4.28**, no urgent fires.
+
+**Source of truth changed today:** everything moved off Google Drive into this GitHub repo (`LuckDragonAsgard/superleague-yeah-v4`). Drive copies are deprecated and Mona will delete them manually.
+
+**First thing to do when you resume:**
+1. Read this whole doc.
+2. Hit https://superleague.streamlinewebapps.com — confirm green banner top-right shows v4.28 (or whatever's current).
+3. Ask Paddy what he wants to work on. Don't pre-emptively fix things — he had specific priorities (see "Suggested next steps" below).
+
+**Important behaviour rules** (from memory of previous Claude — re-applying so nothing falls through the cracks):
+- Save NEW code/config to GitHub via `gh-push.pgallivan.workers.dev` (POST `{owner, repo, path, content, message}` JSON, include a Mozilla User-Agent or CF blocks). NOT to Drive.
+- Drive is only for live-edit Office files now (.docx, .xlsx, .pptx).
+- Secrets live in `asgard-vault.pgallivan.workers.dev` (X-Pin auth required). Never commit secret values to GitHub — secret scanning will reject the push.
+- Paddy doesn't want to do dashboard work. Always deploy/configure via API/code.
+- Coaches must NEVER need a hard refresh — the patch's MutationObserver + 2.5s setInterval handles re-renders.
+- Sort out popups without asking.
 
 ---
 
@@ -187,40 +206,4 @@ All in `paddy@luckdragon.io` shared drive (parent ID `0AMdw_CgtxddaUk9PVA`):
 - 2026-04-26: v4.18 (id `14w8dlO_czihvNCoS5L-jAzSZbPImTr4K`) — original from yesterday
 - 2026-04-27: v4.21 (id `1_euGjaaA4vQZlVQgbFalH1Y9mesEltwf`)
 - 2026-04-27: v4.22 (id `1PgGV3gWJFVVydlz6CkZPaHcKOhUKKNH4`)
-- 2026-04-27: v4.27 (id `1cnnJ0tokyp2Fo2V_NfncHko-59rwT-ju`)
-- 2026-04-27: **v4.28** (this handover) — uploaded alongside this doc
-
-The latest live version on Cloudflare is v4.28. If you need to pull the live source, hit the CF API directly:
-
-```
-curl -X GET "https://api.cloudflare.com/client/v4/accounts/a6f47c17811ee2f8b6caeb8f38768c20/workers/scripts/sly-app" \
-  -H "Authorization: Bearer <<REDACTED — fetch from asgard-vault: CF_API_TOKEN>>"
-```
-
-Returns multipart form-data with `sly-app-v2.js` part containing the JS source.
-
----
-
-## Suggested next steps (priority order)
-
-1. **Delete old Drive copies** of sly-app-v2.js — keep only v4.28
-2. **Re-upload coach logos** as transparent PNGs in Lovable (kills the Trophy white tiles permanently)
-3. **Add PA calculation** to `/api/scores` so the Ladder PA column shows real points-against
-4. **Migrate historical R1–R6 team_selections** (2,288 rows) to D1
-5. **Dedupe banter messages** at DB level
-6. **Continue GitHub org migration** PaddyGallivan → LuckDragonAsgard
-7. **Delete old Vercel project** (no longer needed since sly-app proxies)
-
----
-
-## Key file paths
-
-- Live worker (Cloudflare): `sly-app` script under account `a6f47c17811ee2f8b6caeb8f38768c20`
-- Drive worker source: `G:\My Drive\sly-app-v2.js` (Drive id varies — see "Drive copies" above)
-- Drive deploy script: `G:\My Drive\sly-login-deploy.js` (Drive id `1PZ1rytwuj34H2fxo6RTB2G4qU3h4ju6g`)
-- Drive deploy relay source: `G:\My Drive\sly-deploy.js` (Drive id `1iiIxgbQFDulFWqBofKPE0NFjkz7tsUy8`)
-- This handover: alongside v4.28 source in Drive
-
----
-
-**End of handover.** Next Claude: read this first, then pick up from "Suggested next steps". Live site is stable — green banner shows v4.28.
+- 2026-04-27: v4.27 (id `1cnnJ0tokyp2Fo2V_NfncHko-59rwT-j
