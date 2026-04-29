@@ -108,7 +108,7 @@ div:has(img[src*="team-logos"]),span:has(img[src*="team-logos"]),
 (function(){
 'use strict';
 var API='/api';
-var VER='v4.32';
+var VER='v4.34';
 
 function ensureBanner(){
   if(document.getElementById('sly-ver-banner'))return;
@@ -822,12 +822,18 @@ export default {
   async fetch(req, env) {
     const u = new URL(req.url);
     const p = u.pathname;
+
+    // Block service worker registration (we want fresh HTML always)
     if (p.includes('service-worker') || (p.includes('sw') && p.endsWith('.js'))) {
       return new Response('', { status: 404 });
     }
+
+    // CORS preflight
     if (p.startsWith('/api/') && req.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' } });
     }
+
+    // v4 backend bridges (kept for any v4-style callers)
     if (p === '/api/login' && req.method === 'POST') {
       try {
         const bd = await req.json().catch(() => ({}));
@@ -846,16 +852,50 @@ export default {
         return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
       }
     }
-    if ((p === '/api/team-selections' || p === '/api/match-day' || p === '/api/current-round') && req.method === 'GET') return new Response('[]', { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     if ((p === '/api/banter' || p === '/api/chat') && (req.method === 'GET' || req.method === 'POST')) {
       const r = await fetch('https://sly-api.pgallivan.workers.dev/api/messages' + u.search, { method: req.method, headers: req.headers, body: req.method === 'POST' ? req.body : undefined });
       const body = await r.text();
       return new Response(body, { status: r.status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     }
-    if (p.startsWith('/api/')) return fetch('https://sly-api.pgallivan.workers.dev' + p + u.search, { method: req.method, headers: req.headers, body: req.body });
-    const html = await env.SLY_STATIC.get('index.html');
-    if (!html) return new Response('No HTML in KV', { status: 404 });
-    const patched = html.replace('</body>', PATCH + '</body>');
-    return new Response(patched, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0', 'Pragma': 'no-cache', 'Expires': '0', 'CDN-Cache-Control': 'no-store', 'Cloudflare-CDN-Cache-Control': 'no-store' } });
+    if (p.startsWith('/api/v4/')) {
+      const inner = p.replace('/api/v4', '/api');
+      return fetch('https://sly-api.pgallivan.workers.dev' + inner + u.search, { method: req.method, headers: req.headers, body: req.body });
+    }
+
+    // TRUE REVERSE PROXY: fetch live from mate's .online for everything else
+    const upstreamUrl = 'https://superleagueyeah.online' + p + u.search;
+    const upstreamHeaders = new Headers(req.headers);
+    upstreamHeaders.delete('host');
+    upstreamHeaders.delete('cf-connecting-ip');
+    upstreamHeaders.delete('cf-ipcountry');
+    upstreamHeaders.delete('cf-ray');
+    upstreamHeaders.delete('cf-visitor');
+    upstreamHeaders.set('host', 'superleagueyeah.online');
+
+    const upstream = await fetch(upstreamUrl, {
+      method: req.method,
+      headers: upstreamHeaders,
+      body: ['GET','HEAD'].includes(req.method) ? undefined : req.body,
+      redirect: 'manual'
+    });
+
+    const ct = upstream.headers.get('content-type') || '';
+    const newHeaders = new Headers(upstream.headers);
+    // Don't pass through HSTS or upgrade headers that lock host to .online
+    newHeaders.delete('strict-transport-security');
+    newHeaders.delete('content-security-policy');
+    newHeaders.delete('content-encoding');
+    newHeaders.delete('content-length');
+
+    // Inject patch only into HTML responses
+    if (ct.includes('text/html') && upstream.status === 200) {
+      let html = await upstream.text();
+      html = html.replace('</body>', PATCH + '</body>');
+      newHeaders.set('content-type', 'text/html; charset=utf-8');
+      newHeaders.set('cache-control', 'no-cache, no-store, must-revalidate, max-age=0');
+      return new Response(html, { status: upstream.status, headers: newHeaders });
+    }
+
+    return new Response(upstream.body, { status: upstream.status, headers: newHeaders });
   }
 };
