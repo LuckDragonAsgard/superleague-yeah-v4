@@ -5681,5 +5681,58 @@ if(_origEnterApp2){
 </script>
 <button class="export-btn" onclick="openExportModal()" title="Share">&#128247;</button>
 <div class="export-modal" id="exportModal" onclick="if(event.target===this)closeExportModal()"><div class="export-modal-content"><h3>Share Screenshot</h3><button class="export-modal-btn" onclick="exportPage('ladder')">Ladder</button><button class="export-modal-btn" onclick="exportPage('fixtures')">Fixtures</button><button class="export-modal-btn" onclick="exportPage('stats')">Stats</button><button class="export-modal-btn" onclick="exportPage('h2h')">Head to Head</button><button class="export-modal-btn" onclick="closeExportModal()" style="color:var(--text-secondary)">Cancel</button></div></div>
+
+<script>
+// SLY-FIX v6: replace logo.webp imgs with canvas-stripped versions (white -> transparent)
+(function(){
+  const _processed = new WeakSet();
+  const _cache = new Map(); // src -> processed dataURL
+  function whiteToTransparent(img){
+    return new Promise((resolve)=>{
+      if (_cache.has(img.src)) { resolve(_cache.get(img.src)); return; }
+      const t = new Image();
+      t.crossOrigin='anonymous';
+      t.onload = ()=>{
+        try {
+          const c = document.createElement('canvas');
+          c.width = t.naturalWidth; c.height = t.naturalHeight;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(t,0,0);
+          const d = ctx.getImageData(0,0,c.width,c.height);
+          const px = d.data;
+          for (let i=0; i<px.length; i+=4){
+            const r=px[i], g=px[i+1], b=px[i+2];
+            // Aggressive white removal: anything mostly white becomes transparent
+            if (r>235 && g>235 && b>235){
+              const m = Math.min(r,g,b);
+              px[i+3] = m < 240 ? Math.floor((255-m)*4) : 0;
+            }
+          }
+          ctx.putImageData(d,0,0);
+          const url = c.toDataURL('image/png');
+          _cache.set(img.src, url);
+          resolve(url);
+        } catch(e){ resolve(null); }
+      };
+      t.onerror=()=>resolve(null);
+      t.src = img.src;
+    });
+  }
+  async function processAll(){
+    const imgs = document.querySelectorAll('img[src*="logo.webp"], img[src*="team-logos"]');
+    for (const img of imgs){
+      if (_processed.has(img)) continue;
+      _processed.add(img);
+      const url = await whiteToTransparent(img);
+      if (url) img.src = url;
+    }
+  }
+  // Run periodically + on mutations
+  const obs = new MutationObserver(()=>processAll());
+  function start(){ if (!document.body){ setTimeout(start,200); return; } obs.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['src']}); processAll(); setInterval(processAll, 2000); }
+  start();
+})();
+</script>
+
 </body>
 </html>
