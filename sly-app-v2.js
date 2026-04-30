@@ -99,7 +99,7 @@ div:has(img[src*="team-logos"]),span:has(img[src*="team-logos"]),
 .sly-gold-card{padding:14px;background:linear-gradient(135deg,#78350f,#92400e);border-radius:10px;margin:10px 0;color:#fff;font-family:system-ui,sans-serif}
 .sly-gold-h{font-size:15px;font-weight:700;margin-bottom:8px;color:#fcd34d}
 .sly-gold-li{font-size:13px;margin:4px 0;color:#fff8e1;display:flex;gap:6px;align-items:flex-start}
-.sly-gold-li::before{content:"\u2605";color:#fcd34d;flex-shrink:0}
+.sly-gold-li::before{content:"\\u2605";color:#fcd34d;flex-shrink:0}
 .sly-gold-divider{height:1px;background:rgba(255,255,255,0.2);margin:10px 0}
 .sly-gold-addon{font-size:13px;color:#fff8e1;margin-top:4px}
 .sly-gold-addon b{color:#fcd34d}
@@ -108,11 +108,11 @@ div:has(img[src*="team-logos"]),span:has(img[src*="team-logos"]),
 (function(){
 'use strict';
 var API='/api';
-var VER='v4.34';
+var VER='v4.37';
 
 function ensureBanner(){
   if(document.getElementById('sly-ver-banner'))return;
-  var b=document.createElement('div');b.id='sly-ver-banner';b.textContent=VER+' \xb7 LIVE';
+  var b=document.createElement('div');b.id='sly-ver-banner';b.textContent=VER+' \\xb7 LIVE';
   document.body&&document.body.appendChild(b);
 }
 setInterval(ensureBanner,1500);ensureBanner();
@@ -511,7 +511,7 @@ function fillPlayerAvatars(){
     var key=nameTxt.toLowerCase();
     var p=_pBaseByName[key];
     if(!p){
-      var words=nameTxt.split(/\s+/);
+      var words=nameTxt.split(/\\s+/);
       if(words.length>1)p=_pBaseByName[words[words.length-1].toLowerCase()];
     }
     if(!p&&/^[A-Z]{2,3}$/.test(t))p=_pmap[t];
@@ -537,7 +537,7 @@ function stripJumperWrappers(){
       var cs=getComputedStyle(p);
       var bg=cs.backgroundColor||'';
       // Detect white-ish bg: rgb(255, 255, 255), white, or rgba alpha > 0.5 with high RGB
-      var m=bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+      var m=bg.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([\\d.]+))?\\)/);
       var isLight=false;
       if(m){
         var r=+m[1],g=+m[2],b=+m[3],a=m[4]?+m[4]:1;
@@ -582,7 +582,7 @@ function injectFundLogos(){
   var scopes=[];
   document.querySelectorAll('h1,h2,h3,h4,div,section').forEach(function(h){
     var t=(h.textContent||'').trim();
-    if(/^(\ud83d\udcb0\s*)?The Fund$|^Who['\u2019]?s Paid$|^WHO['\u2019]?S PAID$/i.test(t)){
+    if(/^(\\ud83d\\udcb0\\s*)?The Fund$|^Who['\\u2019]?s Paid$|^WHO['\\u2019]?S PAID$/i.test(t)){
       var p=h.parentElement||h;
       if(scopes.indexOf(p)<0)scopes.push(p);
     }
@@ -600,7 +600,7 @@ function injectFundLogos(){
         var t=(el.textContent||'').trim();
         if(!t||t.length>200)return;
         if(t.indexOf(c.name)<0&&t.indexOf(c.team_name||'@@@@')<0)return;
-        if(!/\$\d|Paid|Unpaid|paid|unpaid|owed/i.test(t))return;
+        if(!/\\$\\d|Paid|Unpaid|paid|unpaid|owed/i.test(t))return;
         // Skip if THIS row OR direct parent has any jumper image
         if(el.querySelector('img[src*="team-logos"],img[src*="supabase"],img[data-sly-fund]'))return;
         if(el.parentElement&&el.parentElement.querySelector('img[src*="team-logos"],img[src*="supabase"],img[data-sly-fund]'))return;
@@ -628,7 +628,7 @@ function fillMatchDay(){
   var rs=byRound[latest]||[];
   rs.sort(function(a,b){return (b.points||0)-(a.points||0);});
   function buildBoard(){
-    var h='<div class="sly-md-board"><div class="sly-md-title">\ud83c\udfc6 Round '+latest+' Scores</div>';
+    var h='<div class="sly-md-board"><div class="sly-md-title">\\ud83c\\udfc6 Round '+latest+' Scores</div>';
     rs.forEach(function(s){
       var c=_coaches.find(function(x){return x.id===s.coach_id;})||{};
       var lg=c.logo_url?'<img src="'+c.logo_url+'" alt="">':'';
@@ -640,13 +640,13 @@ function fillMatchDay(){
   var onMatchDay=false;
   document.querySelectorAll('h1,h2,h3').forEach(function(h){
     var t=(h.textContent||'').trim();
-    if(t==='Match Day'||t==='MATCH DAY'||/^Round \d+ \u2014 Match Day$/.test(t)){
+    if(t==='Match Day'||t==='MATCH DAY'||/^Round \\d+ \\u2014 Match Day$/.test(t)){
       var rect=h.getBoundingClientRect();
       if(rect.top<300&&rect.top>-50)onMatchDay=true;
     }
   });
   // Always replace error-state placeholders (anywhere)
-  var TRIGGERS=/^(Could not load (AFL )?scores?\.?|Failed to load scores|No scores available|AFL scores unavailable)$/i;
+  var TRIGGERS=/^(Could not load (AFL )?scores?\\.?|Failed to load scores|No scores available|AFL scores unavailable)$/i;
   document.querySelectorAll('div,p,span').forEach(function(el){
     if(el.dataset.slyMD||el.children.length)return;
     var t=(el.textContent||'').trim();
@@ -657,7 +657,7 @@ function fillMatchDay(){
   if(onMatchDay){
     document.querySelectorAll('h1,h2,h3').forEach(function(h){
       var t=(h.textContent||'').trim();
-      if(t!=='Match Day'&&t!=='MATCH DAY'&&!/^Round \d+ \u2014 Match Day$/.test(t))return;
+      if(t!=='Match Day'&&t!=='MATCH DAY'&&!/^Round \\d+ \\u2014 Match Day$/.test(t))return;
       var parent=h.parentElement||h;
       if(parent.dataset.slyMDP||parent.querySelector('.sly-md-board'))return;
       parent.dataset.slyMDP='1';
@@ -673,13 +673,13 @@ function fixGold(){
     var nodes=[],n;while(n=walker.nextNode())nodes.push(n);
     nodes.forEach(function(tn){
       var t=tn.nodeValue||'';
-      if(t.indexOf('$20')>=0&&!/\$200/.test(t))tn.nodeValue=t.replace(/\$20\b/g,'$50');
+      if(t.indexOf('$20')>=0&&!/\\$200/.test(t))tn.nodeValue=t.replace(/\\$20\\b/g,'$50');
     });
   }catch(e){}
   document.querySelectorAll('h1,h2,h3,h4,h5,div,span,p').forEach(function(el){
     var t=(el.textContent||'').trim();
     if(el.dataset.slyGD)return;
-    if(!/\bgold\b/i.test(t))return;
+    if(!/\\bgold\\b/i.test(t))return;
     if(t.length>40)return;
     if(el.children.length>2)return;
     var parent=el.parentElement;
@@ -687,7 +687,7 @@ function fixGold(){
     el.dataset.slyGD='1';
     var card=document.createElement('div');
     card.className='sly-gold-card';
-    card.innerHTML='<div class="sly-gold-h">\u2b50 What $50 gets you (one-off, full season)</div><div class="sly-gold-li">Auto-draft at start of year so you never miss a pick</div><div class="sly-gold-li">Gold member badge on the ladder</div><div class="sly-gold-li">AI recommendations during the draft</div><div class="sly-gold-li">Best-for-team sort when picking your team</div><div class="sly-gold-li">Early access to new features</div><div class="sly-gold-divider"></div><div class="sly-gold-addon"><b>+ $5 / week</b> if you also want <b>Auto Team Selection</b> \u2014 best team picked for you each round (skip the lineup grind)</div>';
+    card.innerHTML='<div class="sly-gold-h">\\u2b50 What $50 gets you (one-off, full season)</div><div class="sly-gold-li">Auto-draft at start of year so you never miss a pick</div><div class="sly-gold-li">Gold member badge on the ladder</div><div class="sly-gold-li">AI recommendations during the draft</div><div class="sly-gold-li">Best-for-team sort when picking your team</div><div class="sly-gold-li">Early access to new features</div><div class="sly-gold-divider"></div><div class="sly-gold-addon"><b>+ $5 / week</b> if you also want <b>Auto Team Selection</b> \\u2014 best team picked for you each round (skip the lineup grind)</div>';
     el.insertAdjacentElement('afterend',card);
   });
 }
@@ -715,15 +715,15 @@ function startObs(){
 }
 startObs();setInterval(schedulePatch,2500);
 
-var btn=document.createElement('button');btn.id='sly-extras-btn';btn.title='SLY Extras';btn.textContent='\u2b50';
+var btn=document.createElement('button');btn.id='sly-extras-btn';btn.title='SLY Extras';btn.textContent='\\u2b50';
 function placeBtn(){if(!document.body)return setTimeout(placeBtn,200);document.body.appendChild(btn);}
 placeBtn();
 var mel=document.createElement('div');mel.id='sly-extras-modal';
-mel.innerHTML='<div id="sly-extras-inner"><div class="sly-mhead"><span class="sly-mtitle">\u2b50 SLY Extras</span><button class="sly-mclose" id="sly-mc">\u2715</button></div><div id="sly-extras-tabs"><button class="sly-tab active" data-tab="rosters">Rosters</button><button class="sly-tab" data-tab="activity">Activity</button><button class="sly-tab" data-tab="swaps">Swaps</button><button class="sly-tab" data-tab="pin">Change PIN</button></div><div id="sly-extras-body"><div style="text-align:center;padding:24px;color:#6b7280">Loading\u2026</div></div></div>';
+mel.innerHTML='<div id="sly-extras-inner"><div class="sly-mhead"><span class="sly-mtitle">\\u2b50 SLY Extras</span><button class="sly-mclose" id="sly-mc">\\u2715</button></div><div id="sly-extras-tabs"><button class="sly-tab active" data-tab="rosters">Rosters</button><button class="sly-tab" data-tab="activity">Activity</button><button class="sly-tab" data-tab="swaps">Swaps</button><button class="sly-tab" data-tab="pin">Change PIN</button></div><div id="sly-extras-body"><div style="text-align:center;padding:24px;color:#6b7280">Loading\\u2026</div></div></div>';
 function placeModal(){if(!document.body)return setTimeout(placeModal,200);document.body.appendChild(mel);}
 placeModal();
 var modal=mel,body=mel.querySelector('#sly-extras-body');
-function loading(){body.innerHTML='<div style="text-align:center;padding:24px;color:#6b7280">Loading\u2026</div>';}
+function loading(){body.innerHTML='<div style="text-align:center;padding:24px;color:#6b7280">Loading\\u2026</div>';}
 function errMsg(m){body.innerHTML='<div style="text-align:center;padding:24px;color:#f87171">'+m+'</div>';}
 function fetchJ(u){return fetch(u).then(function(r){return r.json();});}
 function fmtDate(d){try{return new Date(d).toLocaleDateString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}catch(e){return d||'';}}
@@ -746,8 +746,8 @@ function loadRosters(){
       if(c.logo_url)html+='<img class="sly-coach-logo" src="'+c.logo_url+'" alt="">';
       else html+='<span style="font-size:28px">'+c.avatar_emoji+'</span>';
       html+='<div><div class="sly-coach-team">'+c.team_name+'</div>';
-      html+='<div class="sly-coach-sub">'+c.name+(myMan?' \xb7 \ud83c\udfaf My Man: '+myMan.player_name:'')+'</div></div></div><div>';
-      if(myMan)html+='<span class="sly-pill myman">\u2605 '+myMan.player_name+'</span>';
+      html+='<div class="sly-coach-sub">'+c.name+(myMan?' \\xb7 \\ud83c\\udfaf My Man: '+myMan.player_name:'')+'</div></div></div><div>';
+      if(myMan)html+='<span class="sly-pill myman">\\u2605 '+myMan.player_name+'</span>';
       drafted.forEach(function(p){html+='<span class="sly-pill">'+p.player_name+'</span>';});
       if(fas.length)html+='<span class="sly-pill fa">+'+fas.length+' FA</span>';
       html+='</div></div>';
@@ -761,7 +761,7 @@ function loadActivity(){
     var html='';
     items.slice(0,60).forEach(function(a){
       var msg=a.message||a.description||'';
-      if(!msg){try{var pl=JSON.parse(a.payload||'{}');msg=(pl.is_update?'\ud83d\udcc4 Updated':'\u2705 Submitted')+' '+(pl.round_name||('R'+(pl.round||'?')))+' team';}catch(e){msg=a.event_type||'event';}}
+      if(!msg){try{var pl=JSON.parse(a.payload||'{}');msg=(pl.is_update?'\\ud83d\\udcc4 Updated':'\\u2705 Submitted')+' '+(pl.round_name||('R'+(pl.round||'?')))+' team';}catch(e){msg=a.event_type||'event';}}
       html+='<div class="sly-act-item"><div style="display:flex;align-items:center;gap:8px">';
       if(a.logo_url||a.actor_logo_url)html+='<img src="'+(a.logo_url||a.actor_logo_url)+'" style="width:24px;height:24px;border-radius:3px;object-fit:cover">';
       else if(a.avatar_emoji)html+='<span>'+a.avatar_emoji+'</span>';
@@ -778,9 +778,9 @@ function loadSwaps(){
     swaps.forEach(function(s){
       var done=s.status==='completed';
       html+='<div class="sly-swap-item"><div style="display:flex;align-items:center;justify-content:space-between">';
-      html+='<span style="color:#fff;font-size:13px;font-weight:600">'+(s.coach_name||'Coach '+s.coach_id)+' \u2013 '+(s.team_name||'')+'</span>';
+      html+='<span style="color:#fff;font-size:13px;font-weight:600">'+(s.coach_name||'Coach '+s.coach_id)+' \\u2013 '+(s.team_name||'')+'</span>';
       html+=(done?'<span class="sly-badge-done">done</span>':'<span class="sly-badge-pend">pending</span>')+'</div>';
-      html+='<div style="color:#9ca3af;font-size:12px;margin-top:3px">R'+(s.round||'?')+' \xb7 OUT: '+(s.suggested_dnp_slot||'?')+' \u2192 IN: '+(s.suggested_emergency_slot||'?')+'</div>';
+      html+='<div style="color:#9ca3af;font-size:12px;margin-top:3px">R'+(s.round||'?')+' \\xb7 OUT: '+(s.suggested_dnp_slot||'?')+' \\u2192 IN: '+(s.suggested_emergency_slot||'?')+'</div>';
       if(s.comment)html+='<div style="color:#d1d5db;font-size:12px;margin-top:4px;font-style:italic">"'+s.comment+'"</div>';
       html+='<div class="sly-act-time">'+fmtDate(s.created_at)+'</div></div>';
     });
@@ -788,10 +788,10 @@ function loadSwaps(){
   }).catch(function(){errMsg('Failed to load swaps');});
 }
 function showPin(){
-  body.innerHTML='<p style="color:#9ca3af;font-size:13px;margin-bottom:14px">Change your coach PIN.</p><select id="sly-pc" class="sly-input"><option value="">Select your coach\u2026</option></select><input id="sly-pp" type="password" placeholder="Current PIN" class="sly-input"><input id="sly-pn" type="password" placeholder="New PIN (min 4 digits)" class="sly-input"><input id="sly-pk" type="password" placeholder="Confirm new PIN" class="sly-input"><button id="sly-ps" class="sly-btn">Change PIN</button><div id="sly-pm"></div>';
+  body.innerHTML='<p style="color:#9ca3af;font-size:13px;margin-bottom:14px">Change your coach PIN.</p><select id="sly-pc" class="sly-input"><option value="">Select your coach\\u2026</option></select><input id="sly-pp" type="password" placeholder="Current PIN" class="sly-input"><input id="sly-pn" type="password" placeholder="New PIN (min 4 digits)" class="sly-input"><input id="sly-pk" type="password" placeholder="Confirm new PIN" class="sly-input"><button id="sly-ps" class="sly-btn">Change PIN</button><div id="sly-pm"></div>';
   fetchJ(API+'/coaches').then(function(coaches){
     var sel=document.getElementById('sly-pc');
-    coaches.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.name+' \u2013 '+c.team_name;sel.appendChild(o);});
+    coaches.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.name+' \\u2013 '+c.team_name;sel.appendChild(o);});
   });
   document.getElementById('sly-ps').addEventListener('click',function(){
     var id=document.getElementById('sly-pc').value;
@@ -805,7 +805,7 @@ function showPin(){
     if(np.length<3){msg.className='sly-err';msg.textContent='PIN too short';return;}
     fetch(API+'/coaches/'+id+'/pin',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_pin:cur,new_pin:np})})
       .then(function(r){return r.json();}).then(function(d){
-        if(d.ok){msg.className='sly-ok';msg.textContent='PIN changed \u2713';}
+        if(d.ok){msg.className='sly-ok';msg.textContent='PIN changed \\u2713';}
         else{msg.className='sly-err';msg.textContent=d.error||'Failed';}
       }).catch(function(){msg.className='sly-err';msg.textContent='Request failed';});
   });
