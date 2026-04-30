@@ -1754,13 +1754,39 @@
     </div>
 
     <div id="pageChat" class="page">
-        <div class="section-title">💬 Banter</div>
-        <div class="chat-container">
-            <div class="chat-messages" id="chatMessages"></div>
-            <div class="chat-input-area" id="chatInputArea" style="display:none">
-                <input type="text" class="chat-input" id="chatInput" placeholder="Talk some trash..." maxlength="500">
-                <button class="chat-send" id="chatSend" onclick="sendMessage()">Send</button>
+        <div class="section-title" id="chatPageTitle">💬 Banter</div>
+        <div class="chat-layout" style="display:flex;gap:12px;align-items:stretch;height:calc(100vh - 220px);min-height:480px">
+          <aside id="chatRoomList" style="width:240px;flex-shrink:0;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden">
+            <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px">
+              <button class="auto-pick-btn" style="flex:1;padding:6px 10px;font-size:12px" onclick="openNewChatPicker()">+ New chat</button>
             </div>
+            <div id="chatRoomItems" style="overflow-y:auto;flex:1"></div>
+          </aside>
+          <div class="chat-container" style="flex:1;display:flex;flex-direction:column">
+              <div class="chat-messages" id="chatMessages" style="flex:1;overflow-y:auto"></div>
+              <div class="chat-input-area" id="chatInputArea" style="display:none">
+                  <input type="text" class="chat-input" id="chatInput" placeholder="Talk some trash..." maxlength="500">
+                  <button class="chat-send" id="chatSend" onclick="sendMessage()">Send</button>
+              </div>
+          </div>
+        </div>
+        <div id="newChatModal" class="modal-overlay" style="display:none">
+          <div class="modal-content" style="max-width:480px">
+            <div class="modal-header"><h2>New chat</h2><button class="modal-close" onclick="document.getElementById('newChatModal').style.display='none'">×</button></div>
+            <div class="modal-body">
+              <div style="display:flex;gap:8px;margin-bottom:14px">
+                <button id="ncTabDM" class="tab-btn active" onclick="switchNewChatTab('dm')">Direct message</button>
+                <button id="ncTabGroup" class="tab-btn" onclick="switchNewChatTab('group')">Group</button>
+              </div>
+              <div id="ncDMList"></div>
+              <div id="ncGroupForm" style="display:none">
+                <input type="text" id="ncGroupName" placeholder="Group name" class="chat-input" style="margin-bottom:10px">
+                <div id="ncGroupMembers"></div>
+                <label style="display:flex;align-items:center;gap:6px;margin:10px 0;font-size:13px"><input type="checkbox" id="ncGroupEnc"> 🔒 End-to-end encrypted</label>
+                <button class="auto-pick-btn" onclick="createNewGroup()" style="width:100%">Create group</button>
+              </div>
+            </div>
+          </div>
         </div>
     </div>
 
@@ -2210,6 +2236,9 @@ let allRounds = [];
 let allTrades = [];
 let allMessages = [];
 let messageReactions = {}; // { message_id: [{emoji, count, coach_ids}] }
+let currentRoomId = 1;       // active chat room (1 = Banter default)
+let chatRooms = [];          // [{id,name,type,member_count,last_message,last_at,encryption_enabled}]
+let myKeyPair = null;        // E2E private/public key for encrypted rooms
 const COMMON_REACTIONS = ['🔥','👏','😂','🏆','💩','👀','🎯','💪'];
 let ladderData = [];
 let unreadMessages = 0;
@@ -2325,7 +2354,7 @@ async function loadAllData() {
         apiFetch('/api/rounds'),
         apiFetch('/api/ladder').catch(() => []),
         apiFetch('/api/trades').catch(() => []),
-        apiFetch('/api/messages').catch(() => []),
+        apiFetch('/api/messages?room=' + currentRoomId).catch(() => []),
         apiFetch('/api/config?key=sly_gold').catch(() => null)
     ]);
     // Sync gold data from D1
@@ -3014,10 +3043,10 @@ async function sendMessage() {
     try {
         await apiFetch('/api/messages', {
             method: 'POST',
-            body: JSON.stringify({ coach_id: currentCoach.id, content: text })
+            body: JSON.stringify({ coach_id: currentCoach.id, content: text, room_id: currentRoomId })
         });
         // Refresh from server to get real ID
-        const msgs = await apiFetch('/api/messages');
+        const msgs = await apiFetch('/api/messages?room=' + currentRoomId);
         if (Array.isArray(msgs)) { allMessages = msgs; await loadMessageReactions(allMessages.map(m => m.id)); renderChat(); }
     } catch(e) {
         // Remove optimistic message on failure
@@ -3791,7 +3820,7 @@ function scoreHash(scores) {
 async function pollScoresAndMessages() {
     try {
         const [msgs, freshScores, freshTrades, freshCoaches] = await Promise.all([
-            apiFetch('/api/messages').catch(() => allMessages),
+            apiFetch('/api/messages?room=' + currentRoomId).catch(() => allMessages),
             apiFetch('/api/scores').catch(() => allScores),
             apiFetch('/api/trades').catch(() => allTrades),
             apiFetch('/api/coaches').catch(() => null)
@@ -5363,6 +5392,104 @@ function generateRoundRecap(roundId){
   return '🏈 Round '+round.round_number+' Wrap\n\n🏆 Winner: '+(wC?.name||'?')+' — '+parseFloat(w.points).toFixed(1)+' pts\n📊 Avg: '+avg.toFixed(1)+' pts · '+rs.length+' coaches scored\n💀 Wooden spoon: '+(lC?.name||'?')+' — '+parseFloat(l.points).toFixed(1)+' pts'+bm;
 }
 async function postRoundRecapToChat(roundId){const recap=generateRoundRecap(roundId);if(!recap)return;try{await apiFetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coach_id:0,content:recap})});}catch(e){}}
+
+// === MULTI-ROOM CHAT (added by sly-app v5.1) ===
+async function loadRooms(){
+  if(!currentCoach||!currentCoach.id)return;
+  try{
+    const rooms=await apiFetch('/api/rooms?coach_id='+currentCoach.id);
+    chatRooms=Array.isArray(rooms)?rooms:[];
+    renderRoomList();
+  }catch(e){console.error('loadRooms',e)}
+}
+function dmOtherId(name){const m=String(name||'').match(/^dm:(\d+):(\d+)$/);if(!m)return null;const a=+m[1],b=+m[2];return a===currentCoach.id?b:a;}
+function dmDisplayName(room){if(room.type!=='private')return room.name||'Group';const oid=dmOtherId(room.name);const c=allCoaches.find(x=>x.id===oid);return c?c.name+' · '+(c.team_name||''):'DM '+oid;}
+function renderRoomList(){
+  const el=document.getElementById('chatRoomItems');if(!el)return;
+  let h='';
+  chatRooms.forEach(r=>{
+    const active=r.id===currentRoomId?'background:var(--accent-primary);color:#000':'';
+    const title=r.type==='private'?dmDisplayName(r):(r.name||'Banter');
+    const enc=r.encryption_enabled?' 🔒':'';
+    const last=r.last_message?(r.last_message.length>40?r.last_message.slice(0,38)+'…':r.last_message):'—';
+    h+=`<div onclick="switchRoom(${r.id})" style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;${active}">
+      <div style="font-weight:600;font-size:13px">${escapeHtml(title)}${enc}</div>
+      <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(last)}</div>
+    </div>`;
+  });
+  el.innerHTML=h||'<div style="padding:14px;color:var(--text-secondary);font-size:12px">No chats yet</div>';
+}
+async function switchRoom(rid){
+  currentRoomId=rid;
+  const room=chatRooms.find(r=>r.id===rid);
+  const title=room?(room.type==='private'?'💬 '+dmDisplayName(room):'💬 '+(room.name||'Banter')):'💬 Chat';
+  const tEl=document.getElementById('chatPageTitle');if(tEl)tEl.textContent=title+(room&&room.encryption_enabled?' 🔒':'');
+  // Reload messages for this room
+  try{
+    const msgs=await apiFetch('/api/messages?room='+rid);
+    if(Array.isArray(msgs)){allMessages=msgs;await loadMessageReactions(allMessages.map(m=>m.id));renderChat();}
+  }catch(e){console.error('switchRoom',e)}
+  renderRoomList();
+}
+function openNewChatPicker(){
+  document.getElementById('newChatModal').style.display='flex';
+  switchNewChatTab('dm');
+}
+function switchNewChatTab(tab){
+  document.getElementById('ncTabDM').classList.toggle('active',tab==='dm');
+  document.getElementById('ncTabGroup').classList.toggle('active',tab==='group');
+  document.getElementById('ncDMList').style.display=tab==='dm'?'block':'none';
+  document.getElementById('ncGroupForm').style.display=tab==='group'?'block':'none';
+  if(tab==='dm')renderDMPicker();
+  if(tab==='group')renderGroupMemberPicker();
+}
+function renderDMPicker(){
+  const el=document.getElementById('ncDMList');if(!el)return;
+  const others=allCoaches.filter(c=>c.id!==currentCoach.id);
+  el.innerHTML=others.map(c=>`<div onclick="startDM(${c.id})" style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px">${c.logo_url?`<img src="${c.logo_url}" style="width:28px;height:36px;object-fit:contain">`:`<span style="font-size:22px">${c.avatar_emoji||'★'}</span>`}<div><div style="font-weight:600;font-size:13px">${escapeHtml(c.name)}</div><div style="font-size:11px;color:var(--text-secondary)">${escapeHtml(c.team_name||'')}</div></div></div>`).join('');
+}
+async function startDM(otherCoachId){
+  try{
+    const r=await apiFetch('/api/dm/'+currentCoach.id+'/'+otherCoachId);
+    if(r&&r.room_id){
+      document.getElementById('newChatModal').style.display='none';
+      await loadRooms();
+      await switchRoom(r.room_id);
+    }
+  }catch(e){alert('DM failed: '+e.message)}
+}
+function renderGroupMemberPicker(){
+  const el=document.getElementById('ncGroupMembers');if(!el)return;
+  const others=allCoaches.filter(c=>c.id!==currentCoach.id);
+  el.innerHTML='<div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px">'+others.map(c=>`<label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer"><input type="checkbox" value="${c.id}" class="nc-member"><span>${escapeHtml(c.name)} — ${escapeHtml(c.team_name||'')}</span></label>`).join('')+'</div>';
+}
+async function createNewGroup(){
+  const name=document.getElementById('ncGroupName').value.trim();
+  if(!name){alert('Name required');return;}
+  const member_ids=Array.from(document.querySelectorAll('.nc-member:checked')).map(x=>+x.value);
+  if(!member_ids.length){alert('Pick at least one member');return;}
+  const enc=document.getElementById('ncGroupEnc').checked?1:0;
+  try{
+    const r=await apiFetch('/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,type:'group',created_by:currentCoach.id,member_ids,encryption_enabled:enc})});
+    if(r&&r.id){
+      document.getElementById('newChatModal').style.display='none';
+      await loadRooms();
+      await switchRoom(r.id);
+    }
+  }catch(e){alert('Create group failed: '+e.message)}
+}
+// Hook room loading into login + page-switch
+const _originalEnterApp = typeof enterApp==='function'?enterApp:null;
+if(_originalEnterApp){
+  enterApp = function(){_originalEnterApp.apply(this,arguments);setTimeout(loadRooms,500);};
+}
+const _origSwitchPage = typeof switchPage==='function'?switchPage:null;
+if(_origSwitchPage){
+  switchPage = function(pageId,el){_origSwitchPage(pageId,el);if(pageId==='pageChat')loadRooms();};
+}
+// Refresh rooms periodically
+setInterval(()=>{if(currentPage==='pageChat'&&currentCoach&&currentCoach.id)loadRooms();},15000);
+
 </script>
 <button class="export-btn" onclick="openExportModal()" title="Share">&#128247;</button>
 <div class="export-modal" id="exportModal" onclick="if(event.target===this)closeExportModal()"><div class="export-modal-content"><h3>Share Screenshot</h3><button class="export-modal-btn" onclick="exportPage('ladder')">Ladder</button><button class="export-modal-btn" onclick="exportPage('fixtures')">Fixtures</button><button class="export-modal-btn" onclick="exportPage('stats')">Stats</button><button class="export-modal-btn" onclick="exportPage('h2h')">Head to Head</button><button class="export-modal-btn" onclick="closeExportModal()" style="color:var(--text-secondary)">Cancel</button></div></div>
