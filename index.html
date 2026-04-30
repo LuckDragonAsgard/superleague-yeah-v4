@@ -1658,6 +1658,20 @@ img[src*="ChampIDImages"]{
 #pageChat .chat-msg-time{font-size:11px!important;color:var(--text-secondary)!important}
 #pageChat .chat-msg-text{font-size:14px!important;color:var(--text)!important;word-wrap:break-word!important}
 
+
+/* === BANTER CHAT INPUT FIX (v5.9) === */
+#pageChat .chat-layout{height:calc(100vh - 280px)!important;min-height:380px!important;max-height:560px!important;display:flex!important;gap:12px!important}
+#pageChat .chat-container{display:flex!important;flex-direction:column!important;flex:1!important;min-height:0!important;overflow:hidden!important;background:var(--bg-card)!important;border:1px solid var(--border)!important;border-radius:14px!important}
+#pageChat .chat-messages{flex:1 1 auto!important;overflow-y:auto!important;padding:14px!important;min-height:0!important}
+#pageChat .chat-input-area{flex:0 0 auto!important;display:flex!important;gap:8px!important;padding:10px 12px!important;border-top:1px solid var(--border)!important;background:var(--bg-input)!important}
+
+
+/* === BANTER FIX v6.0 === */
+#pageChat .chat-layout{overflow:hidden!important;height:520px!important;max-height:520px!important;min-height:380px!important}
+#pageChat .chat-container{overflow:hidden!important;min-height:0!important;max-height:520px!important;height:520px!important}
+#pageChat #chatMessages{flex:1 1 auto!important;overflow-y:auto!important;min-height:0!important}
+#pageChat #chatInputArea{flex:0 0 60px!important;min-height:60px!important}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
@@ -1808,7 +1822,7 @@ img[src*="ChampIDImages"]{
 
     <div id="pageChat" class="page">
         <div class="section-title" id="chatPageTitle">💬 Banter</div>
-        <div class="chat-layout" style="display:flex;gap:12px;align-items:stretch;height:calc(100vh - 220px);min-height:480px">
+        <div class="chat-layout" style="display:flex;gap:12px;align-items:stretch;height:calc(100vh - 280px);min-height:380px;max-height:560px">
           <aside id="chatRoomList" style="width:240px;flex-shrink:0;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden">
             <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px">
               <button class="auto-pick-btn" style="flex:1;padding:6px 10px;font-size:12px" onclick="openNewChatPicker()">+ New chat</button>
@@ -2565,7 +2579,7 @@ async function enterApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     // Auto-show your team on login
-    setTimeout(function(){if(currentCoach){switchPage('pageTeams',null);setTimeout(function(){openTeamModal(currentCoach.id);},500);}},400);
+    setTimeout(function(){if(currentCoach){switchPage('pageHome',null);}},400);
 
     if (currentCoach) {
         document.getElementById('userEmoji').innerHTML = getJerseyHTML(currentCoach, 22);
@@ -2876,6 +2890,15 @@ function renderTeams() {
 
 // ========== TEAM MODAL ==========
 async function openTeamModal(coachId) {
+    // Always pull fresh data so stats reflect current state
+    if (!allCoaches.length || !allPlayers.length || !allScores.length) {
+      try {
+        const [c,p,s] = await Promise.all([apiFetch('/api/coaches'),apiFetch('/api/players'),apiFetch('/api/scores')]);
+        if (Array.isArray(c)) allCoaches = c;
+        if (Array.isArray(p)) allPlayers = p;
+        if (Array.isArray(s)) allScores = s;
+      } catch(e){}
+    }
     const coach = allCoaches.find(c => c.id === coachId);
     if (!coach) return;
     const players = allPlayers.filter(p => p.coach_id === coachId);
@@ -5703,9 +5726,9 @@ if(_origEnterApp2){
           for (let i=0; i<px.length; i+=4){
             const r=px[i], g=px[i+1], b=px[i+2];
             // Aggressive white removal: anything mostly white becomes transparent
-            if (r>235 && g>235 && b>235){
+            if (r>200 && g>200 && b>200 && Math.abs(r-g)<25 && Math.abs(g-b)<25){
               const m = Math.min(r,g,b);
-              px[i+3] = m < 240 ? Math.floor((255-m)*4) : 0;
+              px[i+3] = m < 220 ? Math.floor((255-m)*3) : 0;
             }
           }
           ctx.putImageData(d,0,0);
