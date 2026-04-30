@@ -32,15 +32,34 @@ if(p==='/api/auto_pick'&&m==='GET'){
   const cid=+u.searchParams.get('coach_id')||0;
   const rid=+u.searchParams.get('round_id')||0;
   if(!cid||!rid)return E('coach_id and round_id required');
+  const round=await db.prepare("SELECT id,round_number FROM rounds WHERE id=?").bind(rid).first();
+  if(!round)return E('round not found');
   const{results:roster}=await db.prepare("SELECT p.id,p.name,p.team,p.position,p.champid,p.coach_id,p.active FROM players p WHERE p.coach_id=? AND COALESCE(p.active,1)=1").bind(cid).all();
   const{results:stats}=await db.prepare("SELECT prs.player_id,prs.round_id,prs.fantasy_pts FROM player_round_stats prs WHERE prs.round_id<? AND prs.player_id IN (SELECT id FROM players WHERE coach_id=?) ORDER BY prs.round_id DESC").bind(rid,cid).all();
   const{results:injuriesAll}=await db.prepare("SELECT player_id,injury,estimated_return FROM injury_list").all();
   const injured=new Set();
   for(const i of injuriesAll){if(i.injury&&!/test/i.test(i.estimated_return||''))injured.add(i.player_id)}
-  // Compute opponent defensive strength: avg pts conceded per team (all rounds)
-  const{results:oppStats}=await db.prepare("SELECT p.team AS team, AVG(prs.fantasy_pts) AS avg_pts FROM player_round_stats prs JOIN players p ON p.id=prs.player_id GROUP BY p.team").all();
-  const teamAvg={};oppStats.forEach(o=>teamAvg[o.team]=o.avg_pts);
-  const overallAvg=Object.values(teamAvg).reduce((a,b)=>a+b,0)/(Object.keys(teamAvg).length||1);
+  // === AFL fixture filter + opponent strength ===
+  // Pull Squiggle fixtures for this round
+  const sqResp=await fetch('https://api.squiggle.com.au/?q=games;year=2026;round='+round.round_number,{headers:{'User-Agent':'SLY-Auto-Pick/1.0'}});
+  const sqJson=sqResp.ok?await sqResp.json().catch(()=>({})):{};
+  const games=Array.isArray(sqJson.games)?sqJson.games:[];
+  // Normalise team names: map shorthand to canonical
+  const teamCanon={'CARL':'Carlton','FRE':'Fremantle','HAW':'Hawthorn','MELB':'Melbourne','NM':'North Melbourne','PA':'Port Adelaide','RICH':'Richmond','WB':'Western Bulldogs','WCE':'West Coast Eagles','GWS GIANTS':'Greater Western Sydney','GWS':'Greater Western Sydney','Gold Coast SUNS':'Gold Coast','Sydney Swans':'Sydney','Adelaide Crows':'Adelaide','Brisbane Lions':'Brisbane','Geelong Cats':'Geelong','West Coast Eagles':'West Coast','Western Bulldogs':'Western Bulldogs'};
+  const canon=name=>teamCanon[name]||name;
+  // Build playing-this-round + opponent map
+  const teamOpp={};const playingTeams=new Set();
+  for(const g of games){
+    const h=canon(g.hteam||''),a=canon(g.ateam||'');
+    if(h){playingTeams.add(h);teamOpp[h]=a;}
+    if(a){playingTeams.add(a);teamOpp[a]=h;}
+  }
+  // Compute opponent defensive rating: avg fantasy pts that team's opponents have scored
+  // Quick proxy: avg pts SCORED by all players against that team. Compute from match_player_stats joined to fixtures.
+  // For simplicity: use overall team scoring avg as inverse of defensive strength (weak teams have weaker defenses too)
+  const{results:teamScoreAvg}=await db.prepare("SELECT p.team AS team, AVG(prs.fantasy_pts) AS avg_pts FROM player_round_stats prs JOIN players p ON p.id=prs.player_id GROUP BY p.team").all();
+  const teamAvg={};teamScoreAvg.forEach(t=>teamAvg[canon(t.team)]=t.avg_pts);
+  const overall=teamScoreAvg.length?teamScoreAvg.reduce((a,b)=>a+b.avg_pts,0)/teamScoreAvg.length:60;
   const byP={};
   for(const s of stats){
     if(!byP[s.player_id])byP[s.player_id]={recent:[],all:[]};
@@ -52,7 +71,9 @@ if(p==='/api/auto_pick'&&m==='GET'){
     const recentAvg=d.recent.length?d.recent.reduce((a,b)=>a+b,0)/d.recent.length:0;
     const careerAvg=d.all.reduce((a,b)=>a+b,0)/d.all.length;
     let base=recentAvg*0.7+careerAvg*0.3;
-    // Opponent bias placeholder: would need this round's fixtures + opponent_team for each AFL team
+    // Opponent multiplier — team_avg/overall ratio (weaker = softer matchup → boost)
+    const opp=teamOpp[canon(p.team||'')];
+    if(opp&&teamAvg[opp]){const ratio=teamAvg[opp]/overall;const mult=1-(ratio-1)*0.15;return base*Math.max(0.85,Math.min(1.15,mult));}
     return base;
   }
   const fwd=p=>['KEY_FORWARD','MEDIUM_FORWARD','MIDFIELDER_FORWARD'].includes(p.position);
@@ -61,13 +82,18 @@ if(p==='/api/auto_pick'&&m==='GET'){
   const ruck=p=>p.position==='RUCK';
   const elig={SG:fwd,G1:fwd,G2:fwd,R:ruck,M:mid,T:mid,D1:def,D2:def,E1:p=>true,E2:p=>true,E3:p=>true};
   const SLOTS=['SG','G1','G2','R','M','T','D1','D2','E1','E2','E3'];
-  const eligibleRoster=roster.filter(p=>!injured.has(p.id));
+  // Eligible: not injured AND their AFL team is playing this round
+  const eligibleRoster=roster.filter(p=>{
+    if(injured.has(p.id))return false;
+    if(games.length===0)return true; // if no Squiggle data, don't filter by team
+    return playingTeams.has(canon(p.team||''));
+  });
   const ranked=eligibleRoster.map(p=>({p,score:expectedPts(p)})).sort((a,b)=>b.score-a.score);
   const lineup={},used=new Set();
   for(const slot of SLOTS.filter(s=>!s.startsWith('E'))){
     for(const{p,score} of ranked){
       if(used.has(p.id))continue;
-      if(elig[slot](p)){lineup[slot]={player_id:p.id,name:p.name,position:p.position,expected:Math.round(score*10)/10,slot};used.add(p.id);break;}
+      if(elig[slot](p)){lineup[slot]={player_id:p.id,name:p.name,position:p.position,team:p.team,opponent:teamOpp[canon(p.team||'')]||null,expected:Math.round(score*10)/10,slot};used.add(p.id);break;}
     }
   }
   let emCount=0;
@@ -75,12 +101,13 @@ if(p==='/api/auto_pick'&&m==='GET'){
     if(used.has(p.id))continue;
     if(emCount>=3)break;
     const slot='E'+(emCount+1);
-    lineup[slot]={player_id:p.id,name:p.name,position:p.position,expected:Math.round(score*10)/10,slot};
+    lineup[slot]={player_id:p.id,name:p.name,position:p.position,team:p.team,opponent:teamOpp[canon(p.team||'')]||null,expected:Math.round(score*10)/10,slot};
     used.add(p.id);emCount++;
   }
   const total=Object.values(lineup).reduce((a,l)=>a+(l?.expected||0),0);
   const injuredOnRoster=roster.filter(p=>injured.has(p.id)).map(p=>({player_id:p.id,name:p.name,position:p.position}));
-  return J({ok:true,coach_id:cid,round_id:rid,lineup,projected_total:Math.round(total*10)/10,roster_size:roster.length,available:eligibleRoster.length,injured_excluded:injuredOnRoster,used:used.size});
+  const onByeOnRoster=roster.filter(p=>!injured.has(p.id)&&games.length>0&&!playingTeams.has(canon(p.team||''))).map(p=>({player_id:p.id,name:p.name,team:p.team}));
+  return J({ok:true,coach_id:cid,round_id:rid,lineup,projected_total:Math.round(total*10)/10,roster_size:roster.length,available:eligibleRoster.length,injured_excluded:injuredOnRoster,not_playing_excluded:onByeOnRoster,fixtures_count:games.length,used:used.size});
 }
 if(p==='/api/auto_pick'&&m==='POST'){
   // Apply: run engine then save picks via round_picks
