@@ -15,7 +15,7 @@ if(p==='/api/coaches/login'&&m==='POST'){const{coach_id,pin}=await R(req);if(!co
 const cm=p.match(/^\/api\/coaches\/(\d+)$/);if(cm){const id=+cm[1];if(m==='GET'){const row=await db.prepare('SELECT id,name,team_name,color,avatar_emoji,logo_url,email FROM coaches WHERE id=?').bind(id).first();if(!row)return E('Not found',404);return J(row)}if(m==='PATCH'){const b=await R(req);const a=['team_name','color','avatar_emoji','logo_url','email'];const s=[],v=[];for(const k of a)if(k in b){s.push(`${k}=?`);v.push(b[k])}if(!s.length)return E('No fields');v.push(id);await db.prepare(`UPDATE coaches SET ${s.join(',')} WHERE id=?`).bind(...v).run();return J({ok:true})}}
 const pinm=p.match(/^\/api\/coaches\/(\d+)\/pin$/);if(pinm&&m==='PATCH'){const id=+pinm[1];const{current_pin,new_pin}=await R(req);if(!new_pin||String(new_pin).length<4)return E('PIN must be at least 4 chars');const row=await db.prepare('SELECT id FROM coaches WHERE id=? AND pin=?').bind(id,String(current_pin)).first();if(!row)return E('Current PIN incorrect',401);await db.prepare('UPDATE coaches SET pin=? WHERE id=?').bind(String(new_pin),id).run();return J({ok:true})}
 // FIXED: /api/rounds now includes computed status field
-if(p==='/api/rounds'&&m==='GET'){const cur=await db.prepare('SELECT round_number FROM rounds WHERE is_complete=0 ORDER BY round_number ASC LIMIT 1').first();const max=cur?.round_number??0;const{results}=await db.prepare('SELECT id,name,round_number,is_complete,lock_time FROM rounds WHERE round_number<=? ORDER BY round_number').bind(max).all();return J(results.map(addStatus))}
+if(p==='/api/rounds'&&m==='GET'){const cur=await db.prepare('SELECT round_number FROM rounds WHERE is_complete=0 ORDER BY round_number ASC LIMIT 1').first();const max=(cur?.round_number??0)+1;const{results}=await db.prepare('SELECT id,name,round_number,is_complete,lock_time FROM rounds WHERE round_number<=? ORDER BY round_number').bind(max).all();return J(results.map(addStatus))}
 // FIXED: /api/rounds/current includes status
 if(p==='/api/rounds/current'&&m==='GET'){const r=await db.prepare('SELECT id,name,round_number,is_complete,lock_time FROM rounds WHERE is_complete=0 ORDER BY round_number ASC LIMIT 1').first();return J(r?addStatus(r):null)}
 if(p==='/api/players'&&m==='GET'){const{results}=await db.prepare('SELECT * FROM players ORDER BY name LIMIT 1000').all();return J(results)}
@@ -28,6 +28,84 @@ if(p==='/api/scores'&&m==='GET'){const rd=+u.searchParams.get('round')||+u.searc
 q+=' WHERE (s.round_id=? OR r.round_number=?)';ps.push(rd,rd)}q+=' ORDER BY r.round_number,s.points DESC';const{results}=await db.prepare(q).bind(...ps).all();return J(results)}
 if(p==='/api/scores'&&m==='POST'){const b=await R(req);const{coach_id,round_id,points,result,opponent_id,points_against,max_score}=b;if(!coach_id||!round_id||points==null)return E('coach_id,round_id,points required');await db.prepare('INSERT OR REPLACE INTO scores (coach_id,round_id,points,result,opponent_id,points_against,max_score) VALUES (?,?,?,?,?,?,?)').bind(coach_id,round_id,points,result||null,opponent_id||null,points_against??0,max_score??0).run();return J({ok:true})}
 // FIXED: /api/stats accepts round_id, maps to round_number for query
+if(p==='/api/auto_pick'&&m==='GET'){
+  // Engine: pick best mathematically-possible lineup for a coach for a given round
+  // Uses: form-weighted recent fantasy_pts (last 3 rounds 2x weight, plus career avg), filters injuries, 8-slot lineup
+  const cid=+u.searchParams.get('coach_id')||0;
+  const rid=+u.searchParams.get('round_id')||0;
+  if(!cid||!rid)return E('coach_id and round_id required');
+  // Pull coach's drafted players (excluding delisted)
+  const{results:roster}=await db.prepare("SELECT p.id,p.name,p.team,p.position,p.champid,p.coach_id,p.active FROM players p WHERE p.coach_id=? AND COALESCE(p.active,1)=1").bind(cid).all();
+  // Pull recent stats for those players (last 5 rounds before target)
+  const{results:stats}=await db.prepare("SELECT prs.player_id,prs.round_id,prs.fantasy_pts FROM player_round_stats prs WHERE prs.round_id<? AND prs.player_id IN (SELECT id FROM players WHERE coach_id=?) ORDER BY prs.round_id DESC").bind(rid,cid).all();
+  // Compute form-weighted score per player
+  const byP={};
+  for(const s of stats){
+    if(!byP[s.player_id])byP[s.player_id]={recent:[],all:[]};
+    byP[s.player_id].all.push(s.fantasy_pts||0);
+    if(byP[s.player_id].recent.length<3)byP[s.player_id].recent.push(s.fantasy_pts||0);
+  }
+  function expectedPts(pid){
+    const d=byP[pid];if(!d||!d.all.length)return 30; // unknown player floor
+    const recentAvg=d.recent.length?d.recent.reduce((a,b)=>a+b,0)/d.recent.length:0;
+    const careerAvg=d.all.reduce((a,b)=>a+b,0)/d.all.length;
+    return recentAvg*0.7+careerAvg*0.3;
+  }
+  // Slot eligibility based on player.position (single letter codes: SG,G,R,M,T,D)
+  const SLOTS=['SG','G1','G2','R','M','T','D1','D2','E1','E2','E3'];
+  const fwd=p=>['KEY_FORWARD','MEDIUM_FORWARD','MIDFIELDER_FORWARD'].includes(p.position);
+  const mid=p=>['MIDFIELDER','MID','MIDFIELDER_FORWARD'].includes(p.position);
+  const def=p=>['KEY_DEFENDER','MEDIUM_DEFENDER'].includes(p.position);
+  const ruck=p=>p.position==='RUCK';
+  const elig={SG:fwd,G1:fwd,G2:fwd,R:ruck,M:mid,T:mid,D1:def,D2:def,E1:p=>true,E2:p=>true,E3:p=>true};
+  // Greedy global optimisation: sort by expected pts desc, fill highest-value slot for each player
+  const ranked=roster.map(p=>({p,score:expectedPts(p.id)})).sort((a,b)=>b.score-a.score);
+  const lineup={},used=new Set();
+  // Pass 1: lock starters (non-emergency) using best fits
+  for(const slot of SLOTS.filter(s=>!s.startsWith('E'))){
+    for(const{p,score} of ranked){
+      if(used.has(p.id))continue;
+      if(elig[slot](p)){lineup[slot]={player_id:p.id,name:p.name,position:p.position,expected:Math.round(score*10)/10,slot};used.add(p.id);break;}
+    }
+  }
+  // Pass 2: emergencies — top remaining 3
+  let emCount=0;
+  for(const{p,score} of ranked){
+    if(used.has(p.id))continue;
+    if(emCount>=3)break;
+    const slot='E'+(emCount+1);
+    lineup[slot]={player_id:p.id,name:p.name,position:p.position,expected:Math.round(score*10)/10,slot};
+    used.add(p.id);emCount++;
+  }
+  const total=Object.values(lineup).reduce((a,l)=>a+(l?.expected||0),0);
+  return J({ok:true,coach_id:cid,round_id:rid,lineup,projected_total:Math.round(total*10)/10,roster_size:roster.length,used:used.size});
+}
+if(p==='/api/auto_pick'&&m==='POST'){
+  // Apply: run engine then save picks via round_picks
+  const b=await R(req);
+  const cid=+b.coach_id,rid=+b.round_id;
+  if(!cid||!rid)return E('coach_id and round_id required');
+  const eng=await fetch(new URL('/api/auto_pick?coach_id='+cid+'&round_id='+rid,u.origin).toString());
+  const data=await eng.json();
+  if(!data.ok)return J(data);
+  const stmts=[db.prepare('DELETE FROM round_picks WHERE round_id=? AND coach_id=?').bind(rid,cid)];
+  for(const slot of Object.keys(data.lineup)){
+    const l=data.lineup[slot];
+    if(!l)continue;
+    stmts.push(db.prepare('INSERT INTO round_picks (coach_id,round_id,player_id,slot,banter) VALUES (?,?,?,?,?)').bind(cid,rid,l.player_id,slot,'auto'));
+  }
+  await db.batch(stmts);
+  return J({ok:true,coach_id:cid,round_id:rid,picks_saved:Object.keys(data.lineup).length,lineup:data.lineup,projected_total:data.projected_total})
+}
+if(p==='/api/coaches/auto_pick'&&m==='PATCH'){
+  const b=await R(req);
+  if(!b.coach_id)return E('coach_id required');
+  await db.prepare('UPDATE coaches SET auto_pick_enabled=? WHERE id=?').bind(b.enabled?1:0,b.coach_id).run();
+  return J({ok:true})
+}
+if(p==='/api/_admin/replace'&&m==='POST'){const b=await R(req);const{table,delete_all=false,delete_where=null,rows=[]}=b;if(!table||!rows.length)return E('table and rows[] required');const allowed=['activity_feed','draft_picks','swap_requests','round_picks','player_round_stats','sly_fixtures','team_selection_meta'];if(!allowed.includes(table))return E('table not allowed');const cols=Object.keys(rows[0]);const stmts=[];if(delete_all){stmts.push(db.prepare('DELETE FROM '+table))}else if(delete_where){stmts.push(db.prepare('DELETE FROM '+table+' WHERE '+delete_where))}for(const r of rows){const vals=cols.map(c=>r[c]);const placeholders=cols.map(()=>'?').join(',');stmts.push(db.prepare('INSERT OR REPLACE INTO '+table+' ('+cols.join(',')+') VALUES ('+placeholders+')').bind(...vals))}await db.batch(stmts);return J({ok:true,table,inserted:rows.length})}
+if(p==='/api/picks/_bulk'&&m==='POST'){const b=await R(req);const rows=Array.isArray(b)?b:(Array.isArray(b.rows)?b.rows:[]);if(!rows.length)return E('rows[] required (round_id,coach_id,player_id,slot)');const byKey={};for(const r of rows){if(!r.round_id||!r.coach_id||!r.player_id||!r.slot)continue;const k=r.round_id+'|'+r.coach_id;byKey[k]=byKey[k]||[];byKey[k].push(r)}const stmts=[];for(const k of Object.keys(byKey)){const[rid,cid]=k.split('|');stmts.push(db.prepare('DELETE FROM round_picks WHERE round_id=? AND coach_id=?').bind(+rid,+cid))}for(const r of rows){if(!r.round_id||!r.coach_id||!r.player_id||!r.slot)continue;stmts.push(db.prepare('INSERT INTO round_picks (coach_id,round_id,player_id,slot,banter) VALUES (?,?,?,?,?)').bind(r.coach_id,r.round_id,r.player_id,r.slot,r.banter||''))}await db.batch(stmts);return J({ok:true,inserted:rows.length,groups:Object.keys(byKey).length})}
+if(p==='/api/stats'&&m==='POST'){const b=await R(req);const rows=Array.isArray(b)?b:(Array.isArray(b.rows)?b.rows:[b]);if(!rows.length)return E('rows[] required');const stmts=rows.filter(r=>r.player_id&&r.round_id).map(r=>db.prepare('INSERT OR REPLACE INTO player_round_stats (player_id,round_id,goals,behinds,marks,tackles,hitouts,disposals,fantasy_pts) VALUES (?,?,?,?,?,?,?,?,?)').bind(r.player_id,r.round_id,r.goals||0,r.behinds||0,r.marks||0,r.tackles||0,r.hitouts||0,r.disposals||0,r.fantasy_pts||0));await db.batch(stmts);return J({ok:true,inserted:stmts.length})}
 if(p==='/api/stats'&&m==='GET'){const rd=+u.searchParams.get('round_id')||0,rn=+u.searchParams.get('round')||0,pl=u.searchParams.get('player');let q='SELECT * FROM player_round_stats WHERE 1=1';const ps=[];if(rd){q+=' AND round_id=?';ps.push(rd)}else if(rn){const rr=await db.prepare('SELECT id FROM rounds WHERE round_number=?').bind(rn).first();if(rr){q+=' AND round_id=?';ps.push(rr.id)}}if(pl){q+=' AND player_id=?';ps.push(pl)}q+=' LIMIT 5000';const{results}=await db.prepare(q).bind(...ps).all();return J(results)}
 if(p==='/api/config'&&m==='GET'){const DEFAULTS={'sly_gold':{price:50,features:['Auto-submit team each week','Auto-draft for you','AI recommendations','Best-for-team sort','Gold badge ⭐','Early access']}};const key=u.searchParams.get('key');if(key){let row=null;try{row=await db.prepare('SELECT value FROM config WHERE key=?').bind(key).first()}catch(e){}if(!row)try{row=await db.prepare('SELECT value FROM sly_config WHERE key=?').bind(key).first()}catch(e){}if(row?.value){try{return J({key,value:JSON.parse(row.value)})}catch(e){return J({key,value:row.value})}}return J(DEFAULTS[key]?{key,value:DEFAULTS[key]}:null)}let cfg={...DEFAULTS};try{const a=await db.prepare('SELECT key,value FROM config').all();for(const r of(a.results||[]))cfg[r.key]=r.value}catch(e){}try{const b=await db.prepare('SELECT key,value FROM sly_config').all();for(const r of(b.results||[]))cfg[r.key]=r.value}catch(e){}return J(cfg)}
 if(p==='/api/injuries'&&m==='GET'){const row=await db.prepare("SELECT value FROM config WHERE key='injuries'").first();if(!row?.value)return J([]);try{return J(JSON.parse(row.value))}catch{return J([])}}
