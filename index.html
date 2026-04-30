@@ -1605,6 +1605,59 @@
 .toggle-switch input:checked + .slider { background:var(--accent); }
 .toggle-switch input:checked + .slider:before { transform:translateX(24px); }
 .autopick-status { font-size:0.85em; margin-top:8px; padding:6px 10px; border-radius:6px; background:var(--card-bg); }
+
+/* === SLY-FIX bundle (v5.3) === */
+/* Strip white/light backgrounds + padding around jersey SVGs and team-logos imgs */
+svg[role="img"][aria-label*="jersey" i],
+img[src*="team-logos"],
+img[src*="hzkodmxrranessgbjjjl.supabase"]{
+  background:transparent!important;
+  padding:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  border:none!important;
+  display:inline-block;
+  vertical-align:middle;
+}
+div:has(> svg[role="img"][aria-label*="jersey" i]),
+span:has(> svg[role="img"][aria-label*="jersey" i]),
+div:has(> img[src*="team-logos"]),
+span:has(> img[src*="team-logos"]){
+  background:transparent!important;
+  background-color:transparent!important;
+  padding:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  border:none!important;
+}
+/* Coach .webp logos with baked-in white bgs — multiply blend to make white go away on dark */
+img[src*="logo.webp"]{
+  mix-blend-mode:multiply!important;
+  background:transparent!important;
+}
+/* Player headshot universal cap so React re-renders never grow them */
+img[src*="ChampIDImages"]{
+  max-width:48px!important;
+  max-height:48px!important;
+  border-radius:50%!important;
+  object-fit:cover!important;
+  object-position:top center!important;
+}
+/* === FIX: Banter chat layout === */
+#pageChat .chat-layout{display:flex!important;gap:12px!important;align-items:stretch!important;height:calc(100vh - 240px)!important;min-height:480px!important}
+#pageChat .chat-container{display:flex!important;flex-direction:column!important;flex:1!important;background:var(--bg-card)!important;border:1px solid var(--border)!important;border-radius:14px!important;overflow:hidden!important;min-height:0!important}
+#pageChat .chat-messages{flex:1!important;overflow-y:auto!important;padding:14px!important}
+#pageChat .chat-input-area{display:flex!important;gap:8px!important;padding:10px 12px!important;border-top:1px solid var(--border)!important;background:var(--bg-input)!important}
+#pageChat .chat-input{flex:1!important;padding:10px 12px!important;background:var(--bg-card)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important;font-size:14px!important;outline:none!important}
+#pageChat .chat-send{padding:10px 16px!important;background:var(--accent)!important;color:#000!important;border:none!important;border-radius:10px!important;font-weight:700!important;cursor:pointer!important}
+#pageChat .chat-msg{display:flex!important;gap:10px!important;margin-bottom:14px!important;align-items:flex-start!important}
+#pageChat .chat-msg-avatar{width:36px!important;height:36px!important;border-radius:50%!important;background:var(--bg-card)!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-shrink:0!important;overflow:hidden!important}
+#pageChat .chat-msg-content{flex:1!important;min-width:0!important}
+#pageChat .chat-msg-header{display:flex!important;align-items:baseline!important;gap:8px!important;margin-bottom:2px!important}
+#pageChat .chat-msg-name{font-weight:700!important;font-size:14px!important}
+#pageChat .chat-msg-time{font-size:11px!important;color:var(--text-secondary)!important}
+#pageChat .chat-msg-text{font-size:14px!important;color:var(--text)!important;word-wrap:break-word!important}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
@@ -1764,7 +1817,7 @@
           </aside>
           <div class="chat-container" style="flex:1;display:flex;flex-direction:column">
               <div class="chat-messages" id="chatMessages" style="flex:1;overflow-y:auto"></div>
-              <div class="chat-input-area" id="chatInputArea" style="display:none">
+              <div class="chat-input-area" id="chatInputArea">
                   <input type="text" class="chat-input" id="chatInput" placeholder="Talk some trash..." maxlength="500">
                   <button class="chat-send" id="chatSend" onclick="sendMessage()">Send</button>
               </div>
@@ -2020,7 +2073,7 @@
                     <div class="toggle-sub">Automatically optimises your lineup before each round</div>
                 </div>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="autoPickToggle" onchange="toggleAutoPick(this.checked)">
+                    <input type="checkbox" id="autoPickToggle" onchange="toggleAutoPick(this.checked)"> <button onclick="runAutoPickNow()" style="margin-left:14px;padding:6px 12px;background:linear-gradient(135deg,#00d4ff,#a855f7);color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer">🤖 Pick Best Team Now</button>
                     <span class="slider"></span>
                 </label>
             </div>
@@ -2044,7 +2097,7 @@
 
         <div class="admin-section" style="margin-top:1.5rem">
             <h3 style="font-size:1rem;margin-bottom:0.35rem;color:#e8a000">⭐ SLY Gold Members</h3>
-            <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.5rem">SLY Gold is the premium tier of the league. Gold members pay an extra <strong style="color:#e8a000">$20</strong> on top of the standard buy-in. All SLY Gold proceeds — along with the $50 buy-ins — go straight into the <strong style="color:var(--accent2)">Day of Days party fund</strong>. 🎉 Gold members get the ⭐ GOLD badge throughout the app.</p>
+            <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.5rem">SLY Gold is the premium tier of the league. Gold members pay an extra <strong style="color:#e8a000">$50</strong> on top of the standard buy-in. All SLY Gold proceeds — along with the $50 buy-ins — go straight into the <strong style="color:var(--accent2)">Day of Days party fund</strong>. 🎉 Gold members get the ⭐ GOLD badge throughout the app.</p>
             <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.75rem">Toggle coaches below to grant or remove Gold status.</p>
             <div id="goldMembersGrid" style="display:grid;gap:0.5rem"></div>
             <div id="goldStatus" style="margin-top:0.5rem;font-size:0.78rem;color:#e8a000"></div>
@@ -2105,7 +2158,7 @@
                 <span style="font-size:0.9rem;font-weight:800;color:#e8a000">SLY GOLD</span>
                 <span style="font-size:0.7rem;color:var(--text-secondary);margin-left:auto">Premium members</span>
             </div>
-            <p style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.75rem">Pay an extra <strong style="color:#e8a000">$20</strong> on top of your buy-in to become SLY Gold. You get the ⭐ GOLD badge across the whole app, and every Gold dollar goes straight to the <strong style="color:var(--accent2)">Day of Days party fund</strong>. 🎉</p>
+            <p style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.75rem">Pay an extra <strong style="color:#e8a000">$50</strong> on top of your buy-in to become SLY Gold. You get the ⭐ GOLD badge across the whole app, and every Gold dollar goes straight to the <strong style="color:var(--accent2)">Day of Days party fund</strong>. 🎉</p>
             <div id="fundGoldGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem"></div>
         </div>
         <div style="background:var(--bg-card);border-radius:16px;padding:1.25rem;border:1px solid var(--border)">
@@ -2539,7 +2592,7 @@ async function enterApp() {
         renderChat();
         renderStats(); initNewFeatures();
         loadHomePage();
-      loadAutoPickStatus();
+      loadAutoPickStatusV2();
         setupAdmin();
         setupRealtime();
         setTimeout(checkAndCelebrateWin, 1500);
@@ -2733,7 +2786,7 @@ function renderLadder() {
         const formWins = l.form.filter(f => f.result === 'W').length;
         const formLosses = l.played - formWins;
         const pct = l.played > 0 ? ((formWins / l.played) * 100).toFixed(0) + '%' : '0%';
-        const rankClass = l.rank <= 3 ? `rank-${l.rank}` : 'rank-other';
+        const __rk = (l.rank!=null && !isNaN(l.rank)) ? l.rank : (ladder.indexOf(l)+1); const rankClass = __rk <= 3 ? `rank-${__rk}` : 'rank-other';
 
         const isMe = currentCoach && c.id === currentCoach.id;
         const fRes = l.form.map(f => typeof f === 'object' ? f.result : f);
@@ -2745,7 +2798,7 @@ function renderLadder() {
         if (isMe) tr.style.background = 'rgba(56, 189, 248, 0.08)';
         tr.addEventListener('click', () => openTeamModal(c.id));
         tr.innerHTML = `
-            <td><div class="rank-badge ${rankClass}">${l.rank}</div></td>
+            <td><div class="rank-badge ${rankClass}">${__rk}</div></td>
             <td>
                 <div class="coach-cell">
                     <span style="display:inline-flex;align-items:center">${getJerseyHTML(c, 56)}</span>
@@ -3686,7 +3739,7 @@ function renderFundGoldGrid() {
     const gold = getGoldMembers();
     const goldCoaches = allCoaches.filter(c => gold[String(c.id)]);
     if (goldCoaches.length === 0) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);font-size:0.8rem;padding:0.5rem">No gold members yet — admin can add them</div>'; return; }
-    grid.innerHTML = goldCoaches.map(c => `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.45rem 0.65rem;background:rgba(232,160,0,0.1);border-radius:8px;border:1px solid rgba(232,160,0,0.3)">${getJerseyHTML(c, 18)}<span style="font-size:0.82rem;font-weight:600;flex:1">${c.name}</span><span style="font-size:0.75rem;color:#e8a000;font-weight:700">$20</span></div>`).join('');
+    grid.innerHTML = goldCoaches.map(c => `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.45rem 0.65rem;background:rgba(232,160,0,0.1);border-radius:8px;border:1px solid rgba(232,160,0,0.3)">${getJerseyHTML(c, 18)}<span style="font-size:0.82rem;font-weight:600;flex:1">${c.name}</span><span style="font-size:0.75rem;color:#e8a000;font-weight:700">$50</span></div>`).join('');
 }
 // ========== END SLY GOLD ==========
 
@@ -4775,14 +4828,39 @@ async function loadLastTeam() {
       const statusEl = document.getElementById('autoPickStatus');
       statusEl.style.display = 'block';
       statusEl.textContent = enabled ? 'Enabling auto-pick...' : 'Disabling auto-pick...';
+      if (!currentCoach) { statusEl.textContent = 'Log in first'; statusEl.style.color='#e74c3c'; return; }
       try {
-        await apiFetch('/api/config', { method: 'POST', body: JSON.stringify({ key: 'auto_pick_enabled', value: enabled ? 'true' : 'false' }) });
-        statusEl.textContent = enabled ? 'Auto-pick ON - your team will be optimised before each round' : 'Auto-pick OFF - set your lineup manually';
+        await apiFetch('/api/coaches/auto_pick', { method:'PATCH', body: JSON.stringify({ coach_id: currentCoach.id, enabled }) });
+        statusEl.textContent = enabled ? '✅ Auto-pick ON — your team will be optimised before each round (form-weighted, all 11 slots)' : 'Auto-pick OFF — set your lineup manually';
         statusEl.style.color = enabled ? 'var(--accent)' : 'var(--text-secondary)';
       } catch(e) {
         statusEl.textContent = 'Failed to update: ' + e.message;
         statusEl.style.color = '#e74c3c';
       }
+    }
+    async function runAutoPickNow(){
+      if (!currentCoach) { alert('Log in first'); return; }
+      const liveR = allRounds.find(r=>r.status==='live'||r.status==='open');
+      if (!liveR) { alert('No active round'); return; }
+      if (!confirm('Auto-pick the optimal lineup for Round '+liveR.round_number+'?')) return;
+      try {
+        const r = await apiFetch('/api/auto_pick', { method:'POST', body: JSON.stringify({ coach_id: currentCoach.id, round_id: liveR.id }) });
+        if (r.ok) {
+          alert('✅ Auto-picked ' + r.picks_saved + ' players. Projected total: ' + r.projected_total + '.');
+          if (typeof renderPickTeam==='function') renderPickTeam();
+          if (typeof loadAll==='function') loadAll();
+        } else {
+          alert('Auto-pick failed: ' + (r.error||'unknown'));
+        }
+      } catch(e) { alert('Auto-pick failed: ' + e.message); }
+    }
+    async function loadAutoPickStatusV2(){
+      if (!currentCoach) return;
+      try {
+        const cs = await apiFetch('/api/coaches/' + currentCoach.id);
+        const toggle = document.getElementById('autoPickToggle');
+        if (toggle) toggle.checked = !!(cs && cs.auto_pick_enabled);
+      } catch(e) {}
     }
 
     // ========== AFL TEAM BADGE SYSTEM ==========
@@ -5377,7 +5455,7 @@ function renderPowerRankings(){const el=document.getElementById('powerRankingsCo
 
 function renderProjectedStandings(){const el=document.getElementById('projectedStandingsContent');if(!el)return;const tot=allRounds.length||22;const comp=allRounds.filter(r=>r.status==='completed').length;const rem=tot-comp;if(comp===0){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">Season not started</div>';return;}const proj=allCoaches.map(c=>{const sc=allScores.filter(s=>s.coach_id===c.id&&s.points!=null);const total=sc.reduce((a,s)=>a+parseFloat(s.points||0),0);const avg=sc.length?total/sc.length:0;const wins=allRounds.filter(r=>r.status==='completed').reduce((w,r)=>{const rs=allScores.filter(s=>s.round_id===r.id&&s.points!=null);if(!rs.length)return w;const winner=rs.reduce((a,b)=>parseFloat(a.points)>=parseFloat(b.points)?a:b);return winner.coach_id===c.id?w+1:w;},0);return{coach:c,total,avg,projected:total+(avg*rem),wins,played:sc.length};}).sort((a,b)=>b.projected-a.projected);const currRk=allCoaches.map(c=>({id:c.id,total:allScores.filter(s=>s.coach_id===c.id&&s.points!=null).reduce((a,s)=>a+parseFloat(s.points||0),0)})).sort((a,b)=>b.total-a.total);el.innerHTML='<div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.75rem">Current avg × '+rem+' remaining rounds · '+comp+' played</div><div style="background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border)">'+proj.map((x,i)=>{const cr=currRk.findIndex(r=>r.id===x.coach.id)+1;const mv=cr-(i+1);const ar=mv>0?'<span style="color:var(--win);font-size:0.75rem">▲'+mv+'</span>':mv<0?'<span style="color:var(--loss);font-size:0.75rem">▼'+Math.abs(mv)+'</span>':'';const isMe=currentCoach&&x.coach.id===currentCoach.id;return'<div style="display:flex;align-items:center;gap:0.6rem;padding:0.7rem 1rem;border-bottom:1px solid var(--border);'+(isMe?'background:rgba(0,168,107,0.08)':'')+'"><span style="font-size:0.85rem;font-weight:700;color:var(--accent);width:1.4rem">'+(i+1)+'</span>'+getJerseyHTML(x.coach,24)+'<div style="flex:1"><div style="font-weight:600;font-size:0.88rem">'+x.coach.name+'</div><div style="font-size:0.7rem;color:var(--text-secondary)">'+x.total.toFixed(0)+' now · '+x.avg.toFixed(1)+' avg · '+x.wins+'W</div></div>'+ar+'<div style="text-align:right"><div style="font-weight:700;font-size:0.95rem;color:var(--accent)">'+x.projected.toFixed(0)+'</div><div style="font-size:0.65rem;color:var(--text-secondary)">projected</div></div></div>';}).join('')+'</div>';}
 async function renderBestXI(){const el=document.getElementById('bestXIContent');if(!el)return;const cr=allRounds.filter(r=>r.status==='completed').sort((a,b)=>b.round_number-a.round_number);if(!cr.length){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No completed rounds yet</div>';return;}el.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--text-secondary)"><div class="spinner"></div><div style="margin-top:0.5rem">Crunching numbers...</div></div>';const round=cr[0];let stats=[];try{stats=await apiFetch('/api/stats?round_id='+round.id);}catch(e){}if(!stats||!stats.length){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No player stats entered for Round '+round.round_number+' yet</div>';return;}const rp=await apiFetch('/api/picks?round_id='+round.id).catch(()=>[]);const sb={};stats.forEach(s=>sb[s.player_id]=s);const sf=p=>{const g=p.goals||0,m=p.marks||0,t=p.tackles||0,d=p.disposals||0,h=p.hitouts||0;return g*3+m*2+t*2+d*1.5+h*1;};const ci=allCoaches.map(c=>{const mp=(rp||[]).filter(p=>p.coach_id===c.id);const my=allPlayers.filter(p=>p.coach_id===c.id).map(p=>({...p,...(sb[p.id]||{})}));const actual=mp.filter(pk=>!pk.slot?.startsWith('E')).reduce((a,pk)=>{const sp=my.find(p=>p.id===pk.player_id);return a+(sp?sf(sp):0);},0);const sorted=my.filter(p=>sb[p.id]).sort((a,b)=>sf(b)-sf(a));const bp=sorted.slice(0,8).reduce((a,p)=>a+sf(p),0);return{coach:c,actual:actual.toFixed(1),bestPossible:bp.toFixed(1),leftOnBench:(bp-actual).toFixed(1),bestPlayer:sorted[0]};}).filter(x=>parseFloat(x.actual)>0);el.innerHTML='<div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.75rem">Round '+round.round_number+' — what was the highest possible score each coach could have got?</div><div style="background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border)">'+ci.sort((a,b)=>parseFloat(b.leftOnBench)-parseFloat(a.leftOnBench)).map(x=>{const isMe=currentCoach&&x.coach.id===currentCoach.id;const left=parseFloat(x.leftOnBench);return'<div style="padding:0.75rem 1rem;border-bottom:1px solid var(--border);'+(isMe?'background:rgba(0,168,107,0.08)':'')+'"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem">'+getJerseyHTML(x.coach,22)+'<span style="font-weight:600;font-size:0.88rem;flex:1">'+x.coach.name+'</span><span style="font-size:0.75rem;color:'+(left>0?'var(--loss)':'var(--win)')+';font-weight:600">'+(left>0?'-'+x.leftOnBench+' pts':'Perfect!')+'</span></div><div style="display:flex;gap:1rem;font-size:0.75rem;color:var(--text-secondary)"><span>Actual: <strong style="color:var(--text)">'+x.actual+'</strong></span><span>Best possible: <strong style="color:var(--accent)">'+x.bestPossible+'</strong></span>'+(x.bestPlayer?'<span>🌟 '+x.bestPlayer.name+'</span>':'')+'</div></div>';}).join('')+'</div>';}
-async function loadMatchDay(){const el=document.getElementById('matchDayContent');if(!el)return;el.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--text-secondary)"><div class="spinner"></div><div style="margin-top:0.5rem">Loading AFL scores...</div></div>';try{const cur=allRounds.find(r=>r.status==='live')||allRounds.find(r=>r.status==='open')||allRounds.slice().sort((a,b)=>b.round_number-a.round_number)[0];if(!cur){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No active round</div>';return;}const aflR=cur.afl_round||cur.round_number;const resp=await fetch('https://api.squiggle.com.au/?q=games;year=2026;round='+aflR,{headers:{'Accept':'application/json','User-Agent':'SLY Fantasy App'}});const data=await resp.json();const games=data.games||[];const slyTeams=new Set(allPlayers.filter(p=>p.coach_id).map(p=>p.team));const tm={'Adelaide':'ADE','Brisbane':'BRL','Carlton':'CAR','Collingwood':'COL','Essendon':'ESS','Fremantle':'FRE','Gold Coast':'GCS','Greater Western Sydney':'GWS','GWS':'GWS','Hawthorn':'HAW','Melbourne':'MEL','North Melbourne':'NOR','Port Adelaide':'PTA','Richmond':'RIC','St Kilda':'STK','Sydney':'SYD','West Coast':'WCE','Western Bulldogs':'WBD','Geelong':'GEE'};const ga=n=>{for(const[k,v]of Object.entries(tm)){if((n||'').includes(k.split(' ')[0]))return v;}return'';};let html='<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;font-weight:600;display:flex;justify-content:space-between"><span>AFL Round '+aflR+' · SLY Round '+cur.round_number+'</span><button onclick="loadMatchDay()" style="font-size:0.75rem;padding:3px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🔄 Refresh</button></div>';if(!games.length){html+='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No fixtures found</div>';}else{games.forEach(g=>{const live=g.timestr&&g.timestr.includes('Q')&&!g.complete;const done=g.complete===100;const ha=ga(g.hteam||'');const aa=ga(g.ateam||'');const sc=live?'var(--live)':done?'var(--win)':'var(--text-secondary)';const st=live?'🔴 '+g.timestr:done?'✅ Final':g.date?new Date(g.date).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'}):'Upcoming';const hw=done&&g.hscore>g.ascore;const aw=done&&g.ascore>g.hscore;html+='<div style="background:var(--card);border-radius:12px;padding:0.85rem 1rem;margin-bottom:0.5rem;border:1px solid '+(live?'var(--live)':'var(--border)')+'"><div style="font-size:0.7rem;color:'+sc+';font-weight:600;margin-bottom:0.5rem">'+st+'</div><div style="display:flex;align-items:center;gap:0.5rem"><div style="flex:1"><div style="font-weight:'+(hw?800:600)+';font-size:0.92rem;color:'+(hw?'var(--win)':'var(--text)')+'">'+g.hteam+(slyTeams.has(ha)?' <span style="color:var(--accent)">●</span>':'')+'</div></div><div style="font-size:1.2rem;font-weight:900;min-width:80px;text-align:center">'+(g.hscore!=null?g.hscore:'—')+' – '+(g.ascore!=null?g.ascore:'—')+'</div><div style="flex:1;text-align:right"><div style="font-weight:'+(aw?800:600)+';font-size:0.92rem;color:'+(aw?'var(--win)':'var(--text)')+'">'+( slyTeams.has(aa)?'<span style="color:var(--accent)">● </span>':'')+g.ateam+'</div></div></div>'+(g.venue?'<div style="font-size:0.68rem;color:var(--text-secondary);margin-top:0.3rem;text-align:center">'+g.venue+'</div>':'')+'</div>';});const tt=new Set(games.flatMap(g=>[ga(g.hteam||''),ga(g.ateam||'')]));const sof=allPlayers.filter(p=>p.coach_id&&tt.has(p.team));if(sof.length){const cm={};allCoaches.forEach(c=>cm[c.id]=c);html+='<div style="margin-top:1rem"><div style="font-size:0.75rem;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem">● SLY Players on Field Today ('+sof.length+')</div><div style="display:grid;gap:0.3rem">'+sof.map(p=>{const c=cm[p.coach_id];return'<div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.5rem;background:var(--card);border-radius:8px;font-size:0.8rem">'+getPlayerPhoto(p,20)+'<span style="flex:1">'+p.name+'</span>'+getTeamBadge(p.team,'sm')+(c?'<span style="font-size:0.7rem;color:var(--text-secondary)">'+getJerseyHTML(c,14)+' '+c.name+'</span>':'')+'</div>';}).join('')+'</div></div>';}}el.innerHTML=html;}catch(e){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">Could not load AFL scores.</div>';}}
+async function loadMatchDay(){const el=document.getElementById('matchDayContent');if(!el)return;el.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--text-secondary)"><div class="spinner"></div><div style="margin-top:0.5rem">Loading AFL scores...</div></div>';try{const cur=allRounds.find(r=>r.status==='live')||allRounds.find(r=>r.status==='open')||allRounds.slice().sort((a,b)=>b.round_number-a.round_number)[0];if(!cur){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No active round</div>';return;}const aflR=cur.afl_round||cur.round_number;const resp=await fetch('/api/squiggle?year=2026&round='+aflR);const data=await resp.json();const games=data.games||[];const slyTeams=new Set(allPlayers.filter(p=>p.coach_id).map(p=>p.team));const tm={'Adelaide':'ADE','Brisbane':'BRL','Carlton':'CAR','Collingwood':'COL','Essendon':'ESS','Fremantle':'FRE','Gold Coast':'GCS','Greater Western Sydney':'GWS','GWS':'GWS','Hawthorn':'HAW','Melbourne':'MEL','North Melbourne':'NOR','Port Adelaide':'PTA','Richmond':'RIC','St Kilda':'STK','Sydney':'SYD','West Coast':'WCE','Western Bulldogs':'WBD','Geelong':'GEE'};const ga=n=>{for(const[k,v]of Object.entries(tm)){if((n||'').includes(k.split(' ')[0]))return v;}return'';};let html='<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;font-weight:600;display:flex;justify-content:space-between"><span>AFL Round '+aflR+' · SLY Round '+cur.round_number+'</span><button onclick="loadMatchDay()" style="font-size:0.75rem;padding:3px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🔄 Refresh</button></div>';if(!games.length){html+='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No fixtures found</div>';}else{games.forEach(g=>{const live=g.timestr&&g.timestr.includes('Q')&&!g.complete;const done=g.complete===100;const ha=ga(g.hteam||'');const aa=ga(g.ateam||'');const sc=live?'var(--live)':done?'var(--win)':'var(--text-secondary)';const st=live?'🔴 '+g.timestr:done?'✅ Final':g.date?new Date(g.date).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'}):'Upcoming';const hw=done&&g.hscore>g.ascore;const aw=done&&g.ascore>g.hscore;html+='<div style="background:var(--card);border-radius:12px;padding:0.85rem 1rem;margin-bottom:0.5rem;border:1px solid '+(live?'var(--live)':'var(--border)')+'"><div style="font-size:0.7rem;color:'+sc+';font-weight:600;margin-bottom:0.5rem">'+st+'</div><div style="display:flex;align-items:center;gap:0.5rem"><div style="flex:1"><div style="font-weight:'+(hw?800:600)+';font-size:0.92rem;color:'+(hw?'var(--win)':'var(--text)')+'">'+g.hteam+(slyTeams.has(ha)?' <span style="color:var(--accent)">●</span>':'')+'</div></div><div style="font-size:1.2rem;font-weight:900;min-width:80px;text-align:center">'+(g.hscore!=null?g.hscore:'—')+' – '+(g.ascore!=null?g.ascore:'—')+'</div><div style="flex:1;text-align:right"><div style="font-weight:'+(aw?800:600)+';font-size:0.92rem;color:'+(aw?'var(--win)':'var(--text)')+'">'+( slyTeams.has(aa)?'<span style="color:var(--accent)">● </span>':'')+g.ateam+'</div></div></div>'+(g.venue?'<div style="font-size:0.68rem;color:var(--text-secondary);margin-top:0.3rem;text-align:center">'+g.venue+'</div>':'')+'</div>';});const tt=new Set(games.flatMap(g=>[ga(g.hteam||''),ga(g.ateam||'')]));const sof=allPlayers.filter(p=>p.coach_id&&tt.has(p.team));if(sof.length){const cm={};allCoaches.forEach(c=>cm[c.id]=c);html+='<div style="margin-top:1rem"><div style="font-size:0.75rem;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem">● SLY Players on Field Today ('+sof.length+')</div><div style="display:grid;gap:0.3rem">'+sof.map(p=>{const c=cm[p.coach_id];return'<div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.5rem;background:var(--card);border-radius:8px;font-size:0.8rem">'+getPlayerPhoto(p,20)+'<span style="flex:1">'+p.name+'</span>'+getTeamBadge(p.team,'sm')+(c?'<span style="font-size:0.7rem;color:var(--text-secondary)">'+getJerseyHTML(c,14)+' '+c.name+'</span>':'')+'</div>';}).join('')+'</div></div>';}}el.innerHTML=html;}catch(e){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-secondary)">Could not load AFL scores.</div>';}}
 function generateRoundRecap(roundId){
   const round=allRounds.find(r=>r.id===roundId);if(!round)return null;
   const rs=allScores.filter(s=>s.round_id===roundId&&s.points!=null).sort((a,b)=>parseFloat(b.points)-parseFloat(a.points));
