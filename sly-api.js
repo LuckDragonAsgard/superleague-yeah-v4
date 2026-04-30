@@ -60,6 +60,35 @@ if(p.startsWith('/api/sly-fixtures')){
 if(p==='/api/draft-picks'&&m==='GET'){const co=+u.searchParams.get('coach')||+u.searchParams.get('coach_id')||0;let q='SELECT dp.*,p.name AS player_name,p.team AS player_team,p.position AS player_position FROM draft_picks dp LEFT JOIN players p ON p.id=dp.player_id';const ps=[];if(co){q+=' WHERE dp.coach_id=?';ps.push(co)}q+=' ORDER BY dp.overall_pick';const{results}=await db.prepare(q).bind(...ps).all();return J(results)}
 if(p==='/api/activity-feed'&&m==='GET'){const lm=+u.searchParams.get('limit')||100;const{results}=await db.prepare('SELECT a.*,c.name AS actor_name,c.team_name,c.color,c.avatar_emoji FROM activity_feed a LEFT JOIN coaches c ON c.id=a.actor_id ORDER BY a.created_at DESC LIMIT ?').bind(lm).all();return J(results||[])}
 if(p==='/api/swap-requests'&&m==='GET'){const{results}=await db.prepare('SELECT s.*,c.name AS coach_name,c.team_name FROM swap_requests s LEFT JOIN coaches c ON c.id=s.coach_id ORDER BY s.created_at DESC').all();return J(results||[])}
+
+if(p==='/api/rooms'){
+  if(m==='GET'){
+    const cid=+u.searchParams.get('coach_id')||0;
+    if(!cid)return E('coach_id required');
+    const{results}=await db.prepare("SELECT r.id,r.name,r.type,r.created_by,r.encryption_enabled,(SELECT COUNT(*) FROM room_members WHERE room_id=r.id) AS member_count,(SELECT m.content FROM messages m WHERE m.room_id=r.id ORDER BY m.created_at DESC LIMIT 1) AS last_message,(SELECT m.created_at FROM messages m WHERE m.room_id=r.id ORDER BY m.created_at DESC LIMIT 1) AS last_at FROM chat_rooms r JOIN room_members rm ON rm.room_id=r.id WHERE rm.coach_id=? ORDER BY last_at DESC,r.id").bind(cid).all();
+    return J(results)
+  }
+  if(m==='POST'){
+    const b=await R(req);
+    const{name,type='group',created_by,member_ids=[],encryption_enabled=0}=b;
+    if(!created_by)return E('created_by required');
+    const r=await db.prepare("INSERT INTO chat_rooms (name,type,created_by,encryption_enabled) VALUES (?,?,?,?)").bind(name||null,type,created_by,encryption_enabled?1:0).run();
+    const rid=r.meta?.last_row_id;
+    const all=[created_by,...member_ids.filter(x=>x!=created_by)];
+    for(const cid of all){await db.prepare("INSERT OR IGNORE INTO room_members (room_id,coach_id) VALUES (?,?)").bind(rid,cid).run()}
+    return J({ok:true,id:rid})
+  }
+}
+const rmm=p.match(/^\/api\/rooms\/(\d+)\/members$/);
+if(rmm&&m==='GET'){const rid=+rmm[1];const{results}=await db.prepare("SELECT rm.coach_id,c.name,c.team_name,c.color,c.logo_url,c.avatar_emoji FROM room_members rm JOIN coaches c ON c.id=rm.coach_id WHERE rm.room_id=?").bind(rid).all();return J(results)}
+if(rmm&&m==='POST'){const rid=+rmm[1];const b=await R(req);const cids=Array.isArray(b.coach_ids)?b.coach_ids:[b.coach_id];for(const cid of cids){await db.prepare("INSERT OR IGNORE INTO room_members (room_id,coach_id) VALUES (?,?)").bind(rid,cid).run()}return J({ok:true,added:cids.length})}
+const rmd=p.match(/^\/api\/rooms\/(\d+)\/members\/(\d+)$/);
+if(rmd&&m==='DELETE'){await db.prepare("DELETE FROM room_members WHERE room_id=? AND coach_id=?").bind(+rmd[1],+rmd[2]).run();return J({ok:true})}
+const dmm=p.match(/^\/api\/dm\/(\d+)\/(\d+)$/);
+if(dmm&&m==='GET'){const a=+dmm[1],b=+dmm[2];if(a===b)return E('cannot DM yourself');const lo=Math.min(a,b),hi=Math.max(a,b);const dmName='dm:'+lo+':'+hi;let row=await db.prepare("SELECT id FROM chat_rooms WHERE type='private' AND name=?").bind(dmName).first();if(!row){const r=await db.prepare("INSERT INTO chat_rooms (name,type,created_by,encryption_enabled) VALUES (?,?,?,1)").bind(dmName,'private',a).run();const rid=r.meta?.last_row_id;await db.prepare("INSERT INTO room_members (room_id,coach_id) VALUES (?,?)").bind(rid,a).run();await db.prepare("INSERT INTO room_members (room_id,coach_id) VALUES (?,?)").bind(rid,b).run();row={id:rid}}return J({ok:true,room_id:row.id})}
+if(p==='/api/coach_keys'){if(m==='GET'){const{results}=await db.prepare("SELECT coach_id,public_key FROM coach_keys").all();return J(results)}if(m==='POST'){const b=await R(req);if(!b.coach_id||!b.public_key)return E('coach_id,public_key required');await db.prepare("INSERT OR REPLACE INTO coach_keys (coach_id,public_key) VALUES (?,?)").bind(b.coach_id,b.public_key).run();return J({ok:true})}}
+const ckm=p.match(/^\/api\/coach_keys\/(\d+)$/);
+if(ckm&&m==='GET'){const row=await db.prepare("SELECT coach_id,public_key FROM coach_keys WHERE coach_id=?").bind(+ckm[1]).first();return J(row||null)}
 return E('Not found',404)
 }catch(e){return E(e.message||String(e),500)}
 }};
