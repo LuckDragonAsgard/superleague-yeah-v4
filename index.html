@@ -5490,6 +5490,116 @@ if(_origSwitchPage){
 // Refresh rooms periodically
 setInterval(()=>{if(currentPage==='pageChat'&&currentCoach&&currentCoach.id)loadRooms();},15000);
 
+
+// === E2E ENCRYPTION (RSA-OAEP via Web Crypto, added v5.2) ===
+async function ensureMyKeys(){
+  if(myKeyPair)return myKeyPair;
+  const key='sly_e2e_keys_'+(currentCoach&&currentCoach.id);
+  const stored=localStorage.getItem(key);
+  if(stored){
+    try{
+      const j=JSON.parse(stored);
+      const priv=await crypto.subtle.importKey('jwk',j.priv,{name:'RSA-OAEP',hash:'SHA-256'},true,['decrypt']);
+      const pub=await crypto.subtle.importKey('jwk',j.pub,{name:'RSA-OAEP',hash:'SHA-256'},true,['encrypt']);
+      myKeyPair={privateKey:priv,publicKey:pub,pub:j.pub};
+      return myKeyPair;
+    }catch(e){console.error('key import',e);localStorage.removeItem(key);}
+  }
+  // Generate new keypair
+  const kp=await crypto.subtle.generateKey({name:'RSA-OAEP',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['encrypt','decrypt']);
+  const privJwk=await crypto.subtle.exportKey('jwk',kp.privateKey);
+  const pubJwk=await crypto.subtle.exportKey('jwk',kp.publicKey);
+  localStorage.setItem(key,JSON.stringify({priv:privJwk,pub:pubJwk}));
+  myKeyPair={privateKey:kp.privateKey,publicKey:kp.publicKey,pub:pubJwk};
+  // Publish public key to server
+  try{
+    await apiFetch('/api/coach_keys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coach_id:currentCoach.id,public_key:JSON.stringify(pubJwk)})});
+  }catch(e){console.error('publish key',e)}
+  return myKeyPair;
+}
+async function getCoachPublicKey(coachId){
+  try{
+    const row=await apiFetch('/api/coach_keys/'+coachId);
+    if(!row||!row.public_key)return null;
+    const jwk=JSON.parse(row.public_key);
+    return await crypto.subtle.importKey('jwk',jwk,{name:'RSA-OAEP',hash:'SHA-256'},false,['encrypt']);
+  }catch(e){return null}
+}
+async function encryptForCoaches(plaintext,coachIds){
+  // Hybrid: AES-GCM for content, RSA-wrap the AES key per recipient
+  const aesKey=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},aesKey,new TextEncoder().encode(plaintext));
+  const rawAes=await crypto.subtle.exportKey('raw',aesKey);
+  const wrapped={};
+  for(const cid of coachIds){
+    const pub=await getCoachPublicKey(cid);
+    if(!pub){wrapped[cid]=null;continue;}
+    const w=await crypto.subtle.encrypt({name:'RSA-OAEP'},pub,rawAes);
+    wrapped[cid]=btoa(String.fromCharCode(...new Uint8Array(w)));
+  }
+  return JSON.stringify({_e2e:1,iv:btoa(String.fromCharCode(...iv)),ct:btoa(String.fromCharCode(...new Uint8Array(ct))),keys:wrapped});
+}
+async function decryptIfEncrypted(content){
+  if(!content||content.indexOf('"_e2e":1')<0)return content;
+  try{
+    const env=JSON.parse(content);
+    if(!env._e2e)return content;
+    if(!myKeyPair)await ensureMyKeys();
+    const wrap=env.keys&&env.keys[currentCoach.id];
+    if(!wrap)return '🔒 (encrypted — not for you)';
+    const wrappedBuf=Uint8Array.from(atob(wrap),c=>c.charCodeAt(0));
+    const rawAes=await crypto.subtle.decrypt({name:'RSA-OAEP'},myKeyPair.privateKey,wrappedBuf);
+    const aesKey=await crypto.subtle.importKey('raw',rawAes,{name:'AES-GCM'},false,['decrypt']);
+    const iv=Uint8Array.from(atob(env.iv),c=>c.charCodeAt(0));
+    const ct=Uint8Array.from(atob(env.ct),c=>c.charCodeAt(0));
+    const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},aesKey,ct);
+    return new TextDecoder().decode(pt);
+  }catch(e){return '🔒 (decrypt failed)'}
+}
+// Wrap renderChat to decrypt encrypted messages before display
+const _origRenderChat=typeof renderChat==='function'?renderChat:null;
+async function _decryptAllMessages(){
+  for(const m of (allMessages||[])){
+    if(m._decrypted)continue;
+    if(m.content&&m.content.indexOf('"_e2e":1')>=0){
+      m._original=m.content;
+      m.content=await decryptIfEncrypted(m.content);
+      m._decrypted=true;
+    }
+  }
+}
+if(_origRenderChat){
+  renderChat=function(){_decryptAllMessages().then(()=>_origRenderChat.apply(this,arguments));};
+}
+// Wrap sendMessage to encrypt for encrypted rooms
+const _origSendMessage=typeof sendMessage==='function'?sendMessage:null;
+if(_origSendMessage){
+  sendMessage=async function(){
+    const room=chatRooms.find(r=>r.id===currentRoomId);
+    if(!room||!room.encryption_enabled){return _origSendMessage.apply(this,arguments);}
+    const inp=document.getElementById('chatInput');
+    const text=(inp&&inp.value||'').trim();
+    if(!text)return;
+    await ensureMyKeys();
+    // Get room members
+    const members=await apiFetch('/api/rooms/'+currentRoomId+'/members');
+    const ids=members.map(x=>x.coach_id);
+    const ciphertext=await encryptForCoaches(text,ids);
+    inp.value='';
+    try{
+      await apiFetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coach_id:currentCoach.id,content:ciphertext,room_id:currentRoomId})});
+      const msgs=await apiFetch('/api/messages?room='+currentRoomId);
+      if(Array.isArray(msgs)){allMessages=msgs;await loadMessageReactions(allMessages.map(m=>m.id));renderChat();}
+    }catch(e){alert('Send failed: '+e.message)}
+  };
+}
+// On login, ensure E2E keys exist
+const _origEnterApp2=typeof enterApp==='function'?enterApp:null;
+if(_origEnterApp2){
+  enterApp=function(){_origEnterApp2.apply(this,arguments);setTimeout(()=>{ensureMyKeys().catch(e=>console.error('e2e init',e));},800);};
+}
+
 </script>
 <button class="export-btn" onclick="openExportModal()" title="Share">&#128247;</button>
 <div class="export-modal" id="exportModal" onclick="if(event.target===this)closeExportModal()"><div class="export-modal-content"><h3>Share Screenshot</h3><button class="export-modal-btn" onclick="exportPage('ladder')">Ladder</button><button class="export-modal-btn" onclick="exportPage('fixtures')">Fixtures</button><button class="export-modal-btn" onclick="exportPage('stats')">Stats</button><button class="export-modal-btn" onclick="exportPage('h2h')">Head to Head</button><button class="export-modal-btn" onclick="closeExportModal()" style="color:var(--text-secondary)">Cancel</button></div></div>
