@@ -26,10 +26,9 @@ return E('Not found',404);return J(row)}if(m==='PATCH'){const b=await R(req);con
 if(p==='/api/picks'){if(m==='GET'){const rd=+u.searchParams.get('round_id')||0,rn=+u.searchParams.get('round')||0,co=+u.searchParams.get('coach_id')||+u.searchParams.get('coach')||0;let q='SELECT rp.id,rp.coach_id,r.round_number,r.id AS round_id,rp.player_id,rp.slot,rp.banter,rp.created_at FROM round_picks rp JOIN rounds r ON r.id=rp.round_id WHERE 1=1';const ps=[];if(rd){q+=' AND rp.round_id=?';ps.push(rd)}else if(rn){q+=' AND r.round_number=?';ps.push(rn)}if(co){q+=' AND rp.coach_id=?';ps.push(co)}q+=' ORDER BY rp.coach_id,rp.slot';const{results}=await db.prepare(q).bind(...ps).all();return J(results)}if(m==='POST'){const b=await R(req);const rn=+b.round_number,ci=+b.coach_id;if(!rn||!ci||!Array.isArray(b.picks))return E('round_number,coach_id,picks[] required');const r=await db.prepare('SELECT id,lock_time FROM rounds WHERE round_number=?').bind(rn).first();if(!r)return E('Round not found',404);if(r.lock_time&&new Date(r.lock_time)<new Date())return E('Round is locked',423);await db.prepare('DELETE FROM round_picks WHERE round_id=? AND coach_id=?').bind(r.id,ci).run();for(const pk of b.picks){await db.prepare('INSERT INTO round_picks (coach_id,round_id,player_id,slot,banter) VALUES (?,?,?,?,?)').bind(ci,r.id,pk.player_id,pk.slot,pk.banter||'').run()}return J({ok:true,count:b.picks.length})}}
 // FIXED: /api/ladder adds coach_id alias so frontend can find coaches
 if(p==='/api/ladder'&&m==='GET'){const{results}=await db.prepare("SELECT c.id, c.id AS coach_id, c.name,c.team_name,c.color,c.avatar_emoji,c.logo_url,COUNT(s.id) AS played,COALESCE(SUM(CASE WHEN s.result='W' THEN 1 ELSE 0 END),0) AS wins,COALESCE(SUM(CASE WHEN s.result='L' THEN 1 ELSE 0 END),0) AS losses,COALESCE(SUM(CASE WHEN s.result='D' THEN 1 ELSE 0 END),0) AS draws,COALESCE(SUM(CASE WHEN s.result='W' THEN 4 WHEN s.result='D' THEN 2 ELSE 0 END),0) AS points,COALESCE(ROUND(SUM(s.points),1),0) AS points_for,COALESCE(ROUND(SUM(COALESCE(s.points_against,0)),1),0) AS points_against,COALESCE(ROUND(AVG(s.points),1),0) AS avg_score FROM coaches c LEFT JOIN scores s ON s.coach_id=c.id LEFT JOIN rounds r ON r.id=s.round_id AND r.round_number>0 WHERE s.id IS NULL OR r.id IS NOT NULL GROUP BY c.id ORDER BY points DESC,avg_score DESC,points_for DESC").all();return J(results)}
-if(p==='/api/scores'&&m==='GET'){const rd=+u.searchParams.get('round')||+u.searchParams.get('round_id')||0;let q='SELECT s.id,s.coach_id,r.id AS round_id,r.round_number,s.points,s.opponent_id,s.result,s.match_name,COALESCE(s.points_against,0) AS points_against,COALESCE(s.max_score,0) AS max_score FROM scores s JOIN rounds r ON r.id=s.round_id';const ps=[];if(rd){// prefer round_number match for user-facing params; use round_id only if explicitly ?round_id=
-const useRoundId=new URL(req.url).searchParams.has('round_id');if(useRoundId){q+=' WHERE s.round_id=?';ps.push(rd)}else{q+=' WHERE r.round_number=?';ps.push(rd)}}q+=' ORDER BY r.round_number,s.points DESC';const{results}=await db.prepare(q).bind(...ps).all();return J(results)}
+if(p==='/api/scores'&&m==='GET'){const rd=+u.searchParams.get('round')||+u.searchParams.get('round_id')||0;let q='SELECT s.id,s.coach_id,r.id AS round_id,r.round_number,s.points,s.opponent_id,s.result,s.match_name,COALESCE(s.points_against,0) AS points_against,COALESCE(s.max_score,0) AS max_score FROM scores s JOIN rounds r ON r.id=s.round_id';const ps=[];if(rd){const useRoundId=new URL(req.url).searchParams.has('round_id');if(useRoundId){q+=' WHERE s.round_id=?';ps.push(rd)}else{q+=' WHERE r.round_number=?';ps.push(rd)}}q+=' ORDER BY r.round_number,s.points DESC';const{results}=await db.prepare(q).bind(...ps).all();return J(results)}
 if(p==='/api/scores'&&m==='POST'){const b=await R(req);const{coach_id,round_id,points,result,opponent_id,points_against,max_score}=b;if(!coach_id||!round_id||points==null)return E('coach_id,round_id,points required');await db.prepare('INSERT OR REPLACE INTO scores (coach_id,round_id,points,result,opponent_id,points_against,max_score) VALUES (?,?,?,?,?,?,?)').bind(coach_id,round_id,points,result||null,opponent_id||null,points_against??0,max_score??0).run();return J({ok:true})}
-// FIXED: /api/stats accepts round_id, maps to round_number for query
+// FIXED: auto_pick - opponent multiplier now uses actual pts conceded per AFL team
 if(p==='/api/auto_pick'&&m==='GET'){
   const cid=+u.searchParams.get('coach_id')||0;
   const rid=+u.searchParams.get('round_id')||0;
@@ -56,12 +55,22 @@ if(p==='/api/auto_pick'&&m==='GET'){
     if(h){playingTeams.add(h);teamOpp[h]=a;}
     if(a){playingTeams.add(a);teamOpp[a]=h;}
   }
-  // Compute opponent defensive rating: avg fantasy pts that team's opponents have scored
-  // Quick proxy: avg pts SCORED by all players against that team. Compute from match_player_stats joined to fixtures.
-  // For simplicity: use overall team scoring avg as inverse of defensive strength (weak teams have weaker defenses too)
-  const{results:teamScoreAvg}=await db.prepare("SELECT p.team AS team, AVG(prs.fantasy_pts) AS avg_pts FROM player_round_stats prs JOIN players p ON p.id=prs.player_id GROUP BY p.team").all();
-  const teamAvg={};teamScoreAvg.forEach(t=>teamAvg[canon(t.team)]=t.avg_pts);
-  const overall=teamScoreAvg.length?teamScoreAvg.reduce((a,b)=>a+b.avg_pts,0)/teamScoreAvg.length:60;
+  // FIXED: Compute teamConceded = avg fantasy pts scored BY players AGAINST each AFL team
+  // Fetch Squiggle fixtures for all past rounds in parallel to build a round→opponent map
+  const currentRoundNum=round.round_number;
+  const pastRoundNums=[];for(let r=1;r<currentRoundNum;r++)pastRoundNums.push(r);
+  let teamConceded={},overallConceded=60;
+  if(pastRoundNums.length>0){
+    const fixtureReqs=pastRoundNums.map(r=>fetch('https://api.squiggle.com.au/?q=games;year=2026;round='+r,{headers:{'User-Agent':'SLY-Auto-Pick/1.0'}}).then(res=>res.ok?res.json().catch(()=>({})):{}).then(d=>({rnd:r,games:Array.isArray(d.games)?d.games:[]})));
+    const allFix=await Promise.all(fixtureReqs);
+    const roundOpp={};
+    for(const{rnd,games:gs} of allFix){roundOpp[rnd]={};for(const g of gs){const h=canon(g.hteam||''),a=canon(g.ateam||'');if(h){roundOpp[rnd][h]=a;}if(a){roundOpp[rnd][a]=h;}}}
+    const{results:allHistStats}=await db.prepare("SELECT prs.player_id,prs.fantasy_pts,r.round_number,p.team FROM player_round_stats prs JOIN rounds r ON r.id=prs.round_id JOIN players p ON p.id=prs.player_id WHERE r.round_number<?").bind(currentRoundNum).all();
+    const cSum={},cCnt={};
+    for(const s of allHistStats){const opp=roundOpp[s.round_number]&&roundOpp[s.round_number][canon(s.team||'')];if(!opp)continue;cSum[opp]=(cSum[opp]||0)+(s.fantasy_pts||0);cCnt[opp]=(cCnt[opp]||0)+1;}
+    for(const t of Object.keys(cSum)){teamConceded[t]=cCnt[t]?cSum[t]/cCnt[t]:0;}
+    const cv=Object.values(teamConceded);if(cv.length)overallConceded=cv.reduce((a,b)=>a+b,0)/cv.length;
+  }
   const byP={};
   for(const s of stats){
     if(!byP[s.player_id])byP[s.player_id]={recent:[],all:[]};
@@ -73,9 +82,10 @@ if(p==='/api/auto_pick'&&m==='GET'){
     const recentAvg=d.recent.length?d.recent.reduce((a,b)=>a+b,0)/d.recent.length:0;
     const careerAvg=d.all.reduce((a,b)=>a+b,0)/d.all.length;
     let base=recentAvg*0.7+careerAvg*0.3;
-    // Opponent multiplier — team_avg/overall ratio (weaker = softer matchup → boost)
+    // FIXED: use teamConceded (pts scored AGAINST each team) not teamAvg
+    // High conceded ratio = weak defense = boost player; mult > 1 when opponent concedes more than avg
     const opp=teamOpp[canon(p.team||'')];
-    if(opp&&teamAvg[opp]){const ratio=teamAvg[opp]/overall;const mult=1-(ratio-1)*0.15;return base*Math.max(0.85,Math.min(1.15,mult));}
+    if(opp&&teamConceded[opp]){const ratio=teamConceded[opp]/overallConceded;const mult=1+(ratio-1)*0.15;return base*Math.max(0.85,Math.min(1.15,mult));}
     return base;
   }
   const fwd=p=>['KEY_FORWARD','MEDIUM_FORWARD','MIDFIELDER_FORWARD'].includes(p.position);
@@ -87,7 +97,7 @@ if(p==='/api/auto_pick'&&m==='GET'){
   // Eligible: not injured AND their AFL team is playing this round
   const eligibleRoster=roster.filter(p=>{
     if(injured.has(p.id))return false;
-    if(games.length===0)return true; // if no Squiggle data, don't filter by team
+    if(games.length===0)return true;
     return playingTeams.has(canon(p.team||''));
   });
   const ranked=eligibleRoster.map(p=>({p,score:expectedPts(p)})).sort((a,b)=>b.score-a.score);
@@ -112,7 +122,6 @@ if(p==='/api/auto_pick'&&m==='GET'){
   return J({ok:true,coach_id:cid,round_id:rid,lineup,projected_total:Math.round(total*10)/10,roster_size:roster.length,available:eligibleRoster.length,injured_excluded:injuredOnRoster,not_playing_excluded:onByeOnRoster,fixtures_count:games.length,used:used.size});
 }
 if(p==='/api/auto_pick'&&m==='POST'){
-  // Apply: run engine then save picks via round_picks
   const b=await R(req);
   const cid=+b.coach_id,rid=+b.round_id;
   if(!cid||!rid)return E('coach_id and round_id required');
