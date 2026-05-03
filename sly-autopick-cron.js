@@ -9,7 +9,7 @@ export default {
 };
 
 async function runAutoPicks() {
-  const API = 'https://sly-api.pgallivan.workers.dev';
+  const API = 'https://sly-api.luckdragon.io';
   // Find next round whose lock_time is within the next 30 hours and not yet locked
   const rounds = await (await fetch(API + '/api/rounds')).json();
   const now = Date.now();
