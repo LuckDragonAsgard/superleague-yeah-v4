@@ -1,4 +1,4 @@
-// sly-app v5.8 — standalone serve + Squiggle proxy + Fund tab patches
+// sly-app v5.9 — standalone serve + Squiggle proxy + Fund tab patches
 // Updated 2026-05-03: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -78,6 +78,11 @@ export default {
     html = html.replace(
       "liveRound.status === 'completed' ? '\\u2705 Completed' : '\\u{1F512} Locked'",
       "liveRound.status === 'completed' ? '\\u2705 Completed' : liveRound.status === 'open' ? '\\u{1F4DD} Open' : '\\u{1F512} Locked'"
+    );
+    // Patch 6: Fix light-mode --text variable — resolves to #fff (white) not dark, causing invisible chat text
+    html = html.replace(
+      '            --text-secondary: #666;\n            --border: rgba(0, 0, 0, 0.1);',
+      '            --text-secondary: #666;\n            --text: #1a1a2e;\n            --border: rgba(0, 0, 0, 0.1);'
     );
     // === End patches ===
 
