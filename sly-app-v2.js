@@ -1,5 +1,5 @@
-// sly-app v5.4 — standalone serve + Squiggle proxy + Fund tab patches
-// Updated 2026-05-03: serve-time Fund tab patch (OUTSTANDING col + JS)
+// sly-app v5.5 — standalone serve + Squiggle proxy + Fund tab patches
+// Updated 2026-05-03: v5.5 strip HTTP headers from KV content
 export default {
   async fetch(req, env) {
     const u = new URL(req.url);
@@ -47,6 +47,11 @@ export default {
 
     let html = await env.SLY_STATIC.get('standalone-index.html');
     if (!html) return new Response('Standalone HTML not in KV', {status:500});
+    // Strip any HTTP response header lines accidentally stored at top of KV value
+    if (html.startsWith('HTTP ')) {
+      const bodyStart = html.indexOf('<!');
+      if (bodyStart > 0) html = html.slice(bodyStart);
+    }
 
     // === Fund tab patches (applied at serve time) ===
     // Patch 1: Add OUTSTANDING column to fund summary card
@@ -69,5 +74,3 @@ export default {
     return new Response(html, {headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache, no-store, must-revalidate, max-age=0'}});
   }
 };
-
---de803833b50da7507f20eabb6714a4844e4e19d87810e586eec500583e97--
