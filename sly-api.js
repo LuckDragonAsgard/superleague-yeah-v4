@@ -12,30 +12,14 @@ try{
 if(p==='/api/health'){const r=await db.prepare('SELECT COUNT(*) AS n FROM coaches').first();return J({ok:true,ts:Date.now(),coaches:r?.n??0})}
 if(p==='/api/coaches'&&m==='GET'){const{results}=await db.prepare('SELECT id,name,team_name,color,avatar_emoji,logo_url,email FROM coaches ORDER BY id').all();return J(results)}
 if(p==='/api/coaches/login'&&m==='POST'){const{coach_id,pin}=await R(req);if(!coach_id||!pin)return E('coach_id and pin required');const row=await db.prepare('SELECT id,name,team_name,color,avatar_emoji,logo_url FROM coaches WHERE id=? AND pin=?').bind(coach_id,String(pin)).first();if(!row)return E('Invalid credentials',401);return J({ok:true,coach:row,token:btoa(`${row.id}:${Date.now()}`)})}
-const cm=p.match(/^\/api\/coaches\/(\d+)$/);if(cm){const id=+cm[1];if(m==='GET'){const row=await db.prepare('SELECT id,name,team_name,color,avatar_emoji,logo_url,email FROM coaches WHERE id=?').bind(id).first();if(!row)
-if(p==='/api/squiggle'&&m==='GET'){
-  const year=u.searchParams.get('year')||'2026';
-  const round=u.searchParams.get('round')||'';
-  const sq=await fetch('https://api.squiggle.com.au/?q=games;year='+year+(round?';round='+round:''),{headers:{'User-Agent':'SLY/1.0 (paddy@luckdragon.io)'}});
-  const data=await sq.json();
-  return J(data);
-}
-return E('Not found',404);return J(row)}if(m==='PATCH'){const b=await R(req);const a=['team_name','color','avatar_emoji','logo_url','email'];const s=[],v=[];for(const k of a)if(k in b){s.push(`${k}=?`);v.push(b[k])}if(!s.length)return E('No fields');v.push(id);await db.prepare(`UPDATE coaches SET ${s.join(',')} WHERE id=?`).bind(...v).run();return J({ok:true})}}
+const cm=p.match(/^\/api\/coaches\/(\d+)$/);if(cm){const id=+cm[1];if(m==='GET'){const row=await db.prepare('SELECT id,name,team_name,color,avatar_emoji,logo_url,email FROM coaches WHERE id=?').bind(id).first();if(!row)return E('Not found',404);return J(row)}if(m==='PATCH'){const b=await R(req);const a=['team_name','color','avatar_emoji','logo_url','email'];const s=[],v=[];for(const k of a)if(k in b){s.push(`${k}=?`);v.push(b[k])}if(!s.length)return E('No fields');v.push(id);await db.prepare(`UPDATE coaches SET ${s.join(',')} WHERE id=?`).bind(...v).run();return J({ok:true})}}
 const pinm=p.match(/^\/api\/coaches\/(\d+)\/pin$/);if(pinm&&m==='PATCH'){const id=+pinm[1];const{current_pin,new_pin}=await R(req);if(!new_pin||String(new_pin).length<4)return E('PIN must be at least 4 chars');const row=await db.prepare('SELECT id FROM coaches WHERE id=? AND pin=?').bind(id,String(current_pin)).first();if(!row)return E('Current PIN incorrect',401);await db.prepare('UPDATE coaches SET pin=? WHERE id=?').bind(String(new_pin),id).run();return J({ok:true})}
 // FIXED: /api/rounds now includes computed status field
 if(p==='/api/rounds'&&m==='GET'){const cur=await db.prepare('SELECT round_number FROM rounds WHERE is_complete=0 ORDER BY round_number ASC LIMIT 1').first();const max=(cur?.round_number??0)+1;const{results}=await db.prepare('SELECT id,name,round_number,is_complete,lock_time FROM rounds WHERE round_number<=? ORDER BY round_number').bind(max).all();return J(results.map(addStatus))}
 // FIXED: /api/rounds/current includes status
 if(p==='/api/rounds/current'&&m==='GET'){const r=await db.prepare('SELECT id,name,round_number,is_complete,lock_time FROM rounds WHERE is_complete=0 ORDER BY round_number ASC LIMIT 1').first();return J(r?addStatus(r):null)}
 if(p==='/api/players'&&m==='GET'){const{results}=await db.prepare('SELECT * FROM players ORDER BY name LIMIT 1000').all();return J(results)}
-const plm=p.match(/^\/api\/players\/([\w-]+)$/);if(plm){if(m==='GET'){const row=await db.prepare('SELECT * FROM players WHERE id=?').bind(plm[1]).first();if(!row)
-if(p==='/api/squiggle'&&m==='GET'){
-  const year=u.searchParams.get('year')||'2026';
-  const round=u.searchParams.get('round')||'';
-  const sq=await fetch('https://api.squiggle.com.au/?q=games;year='+year+(round?';round='+round:''),{headers:{'User-Agent':'SLY/1.0 (paddy@luckdragon.io)'}});
-  const data=await sq.json();
-  return J(data);
-}
-return E('Not found',404);return J(row)}if(m==='PATCH'){const b=await R(req);const a=['name','team','position','photo_url','coach_id','champid'];const s=[],v=[];for(const k of a)if(k in b){s.push(`${k}=?`);v.push(b[k])}if(!s.length)return E('No fields');v.push(plm[1]);await db.prepare(`UPDATE players SET ${s.join(',')} WHERE id=?`).bind(...v).run();return J({ok:true})}}
+const plm=p.match(/^\/api\/players\/([\w-]+)$/);if(plm){if(m==='GET'){const row=await db.prepare('SELECT * FROM players WHERE id=?').bind(plm[1]).first();if(!row)return E('Not found',404);return J(row)}if(m==='PATCH'){const b=await R(req);const a=['name','team','position','photo_url','coach_id','champid'];const s=[],v=[];for(const k of a)if(k in b){s.push(`${k}=?`);v.push(b[k])}if(!s.length)return E('No fields');v.push(plm[1]);await db.prepare(`UPDATE players SET ${s.join(',')} WHERE id=?`).bind(...v).run();return J({ok:true})}}
 // FIXED: /api/picks accepts round_id and coach_id; filters on rp.round_id directly
 if(p==='/api/picks'){if(m==='GET'){const rd=+u.searchParams.get('round_id')||0,rn=+u.searchParams.get('round')||0,co=+u.searchParams.get('coach_id')||+u.searchParams.get('coach')||0;let q='SELECT rp.id,rp.coach_id,r.round_number,r.id AS round_id,rp.player_id,rp.slot,rp.banter,rp.created_at FROM round_picks rp JOIN rounds r ON r.id=rp.round_id WHERE 1=1';const ps=[];if(rd){q+=' AND rp.round_id=?';ps.push(rd)}else if(rn){q+=' AND r.round_number=?';ps.push(rn)}if(co){q+=' AND rp.coach_id=?';ps.push(co)}q+=' ORDER BY rp.coach_id,rp.slot';const{results}=await db.prepare(q).bind(...ps).all();return J(results)}if(m==='POST'){const b=await R(req);const rn=+b.round_number,ci=+b.coach_id;if(!rn||!ci||!Array.isArray(b.picks))return E('round_number,coach_id,picks[] required');const r=await db.prepare('SELECT id,lock_time FROM rounds WHERE round_number=?').bind(rn).first();if(!r)return E('Round not found',404);if(r.lock_time&&new Date(r.lock_time)<new Date())return E('Round is locked',423);await db.prepare('DELETE FROM round_picks WHERE round_id=? AND coach_id=?').bind(r.id,ci).run();for(const pk of b.picks){await db.prepare('INSERT INTO round_picks (coach_id,round_id,player_id,slot,banter) VALUES (?,?,?,?,?)').bind(ci,r.id,pk.player_id,pk.slot,pk.banter||'').run()}return J({ok:true,count:b.picks.length})}}
 // FIXED: /api/ladder adds coach_id alias so frontend can find coaches
