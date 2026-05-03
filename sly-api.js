@@ -56,7 +56,7 @@ if(p==='/api/auto_pick'&&m==='GET'){
     if(a){playingTeams.add(a);teamOpp[a]=h;}
   }
   // FIXED: Compute teamConceded = avg fantasy pts scored BY players AGAINST each AFL team
-  // Fetch Squiggle fixtures for all past rounds in parallel to build a round→opponent map
+  // Fetch Squiggle fixtures for all past rounds in parallel to build a round->opponent map
   const currentRoundNum=round.round_number;
   const pastRoundNums=[];for(let r=1;r<currentRoundNum;r++)pastRoundNums.push(r);
   let teamConceded={},overallConceded=60;
@@ -158,7 +158,7 @@ if(p==='/api/messages'&&m==='GET'){const rm=+u.searchParams.get('room')||1;const
 if(p==='/api/messages'&&m==='POST'){const b=await R(req);const{coach_id,content,room_id=1}=b;if(!coach_id||!content)return E('coach_id,content required');await db.prepare("INSERT INTO messages (coach_id,room_id,content,created_at) VALUES (?,?,?,datetime('now'))").bind(coach_id,room_id,content).run();return J({ok:true})}
 const msgRxm=p.match(/^\/api\/messages\/reactions$/);if(msgRxm&&m==='GET'){const ids=(u.searchParams.get('message_ids')||'').split(',').map(Number).filter(Boolean);if(!ids.length)return J([]);const ph=ids.map(()=>'?').join(',');const{results}=await db.prepare(`SELECT * FROM message_reactions WHERE message_id IN (${ph})`).bind(...ids).all();return J(results||[])}
 const msgRm=p.match(/^\/api\/messages\/(\d+)\/reactions$/);if(msgRm&&m==='POST'){const mid=+msgRm[1];const{coach_id,emoji}=await R(req);if(!coach_id||!emoji)return E('coach_id,emoji required');const ex=await db.prepare('SELECT id FROM message_reactions WHERE message_id=? AND coach_id=? AND emoji=?').bind(mid,coach_id,emoji).first();if(ex){await db.prepare('DELETE FROM message_reactions WHERE id=?').bind(ex.id).run()}else{await db.prepare("INSERT INTO message_reactions (message_id,coach_id,emoji,created_at) VALUES (?,?,?,datetime('now'))").bind(mid,coach_id,emoji).run()}return J({ok:true})}
-// FIXED: /api/sly-fixtures accepts round_id and maps to round_number; also accepts coach_id filter
+// FIXED: /api/sly-fixtures now returns home_score and away_score
 if(p.startsWith('/api/sly-fixtures')){
   const sfm=p.match(/^\/api\/sly-fixtures\/(\d+)$/);
   if(sfm&&m==='PATCH'){const id=+sfm[1];const b=await R(req);const s=[],v=[];for(const k of ['match_name'])if(k in b){s.push(`${k}=?`);v.push(b[k])}if(!s.length)return E('No fields');v.push(id);await db.prepare(`UPDATE sly_fixtures SET ${s.join(',')} WHERE id=?`).bind(...v).run();return J({ok:true})}
@@ -166,7 +166,7 @@ if(p.startsWith('/api/sly-fixtures')){
     const rid=+u.searchParams.get('round_id')||0,rn=+u.searchParams.get('round')||0,ci=+u.searchParams.get('coach_id')||+u.searchParams.get('coach')||0;
     let roundNum=rn;
     if(rid&&!rn){const rr=await db.prepare('SELECT round_number FROM rounds WHERE id=?').bind(rid).first();if(rr)roundNum=rr.round_number}
-    let q='SELECT f.id,f.round_number,f.home_coach_id,f.away_coach_id,f.match_name,h.name AS home_name,h.team_name AS home_team,h.color AS home_color,h.logo_url AS home_logo,a.name AS away_name,a.team_name AS away_team,a.color AS away_color,a.logo_url AS away_logo FROM sly_fixtures f LEFT JOIN coaches h ON h.id=f.home_coach_id LEFT JOIN coaches a ON a.id=f.away_coach_id';
+    let q='SELECT f.id,f.round_number,f.home_coach_id,f.away_coach_id,f.match_name,h.name AS home_name,h.team_name AS home_team,h.color AS home_color,h.logo_url AS home_logo,a.name AS away_name,a.team_name AS away_team,a.color AS away_color,a.logo_url AS away_logo,(SELECT s.points FROM scores s JOIN rounds rr ON rr.id=s.round_id WHERE s.coach_id=f.home_coach_id AND rr.round_number=f.round_number) AS home_score,(SELECT s.points FROM scores s JOIN rounds rr ON rr.id=s.round_id WHERE s.coach_id=f.away_coach_id AND rr.round_number=f.round_number) AS away_score FROM sly_fixtures f LEFT JOIN coaches h ON h.id=f.home_coach_id LEFT JOIN coaches a ON a.id=f.away_coach_id';
     const ps=[];const conds=[];
     if(roundNum){conds.push('f.round_number=?');ps.push(roundNum)}
     if(ci){conds.push('(f.home_coach_id=? OR f.away_coach_id=?)');ps.push(ci,ci)}
@@ -237,3 +237,4 @@ if(p==='/api/picks/rollover'&&m==='POST'){
 return E('Not found',404)
 }catch(e){return E(e.message||String(e),500)}
 }};
+--945952054671fbe7c8eea1972da9991b2db08a09a2f3de34e877ee01e494--
