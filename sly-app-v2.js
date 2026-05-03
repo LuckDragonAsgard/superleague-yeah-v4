@@ -1,1 +1,86 @@
-Ly8gc2x5LWFwcCB2NS43IOKAlCBzdGFuZGFsb25lIHNlcnZlICsgU3F1aWdnbGUgcHJveHkgKyBGdW5kIHRhYiBwYXRjaGVzCi8vIFVwZGF0ZWQgMjAyNi0wNS0wMzogdjUuNyBmaXggbG9hZEhvbWVQYWdlIHJvdW5kIHNlbGVjdGlvbjsgdjUuNSBzdHJpcCBIVFRQIGhlYWRlcnMgZnJvbSBLViBjb250ZW50CmV4cG9ydCBkZWZhdWx0IHsKICBhc3luYyBmZXRjaChyZXEsIGVudikgewogICAgY29uc3QgdSA9IG5ldyBVUkwocmVxLnVybCk7CiAgICBjb25zdCBwID0gdS5wYXRobmFtZTsKICAgIGlmIChwLmluY2x1ZGVzKCdzZXJ2aWNlLXdvcmtlcicpIHx8IChwLmluY2x1ZGVzKCdzdycpICYmIHAuZW5kc1dpdGgoJy5qcycpKSkgcmV0dXJuIG5ldyBSZXNwb25zZSgnJywge3N0YXR1czo0MDR9KTsKICAgIGlmIChwLnN0YXJ0c1dpdGgoJy9hcGkvJykgJiYgcmVxLm1ldGhvZCA9PT0gJ09QVElPTlMnKSByZXR1cm4gbmV3IFJlc3BvbnNlKG51bGwsIHtzdGF0dXM6MjA0LCBoZWFkZXJzOnsnQWNjZXNzLUNvbnRyb2wtQWxsb3ctT3JpZ2luJzonKicsJ0FjY2Vzcy1Db250cm9sLUFsbG93LU1ldGhvZHMnOidHRVQsUE9TVCxQQVRDSCxQVVQsREVMRVRFLE9QVElPTlMnLCdBY2Nlc3MtQ29udHJvbC1BbGxvdy1IZWFkZXJzJzonQ29udGVudC1UeXBlLEF1dGhvcml6YXRpb24nfX0pOwoKICAgIGlmIChwID09PSAnL2FwaS9sb2dpbicgJiYgcmVxLm1ldGhvZCA9PT0gJ1BPU1QnKSB7CiAgICAgIHRyeSB7CiAgICAgICAgY29uc3QgYmQgPSBhd2FpdCByZXEuanNvbigpLmNhdGNoKCgpID0+ICh7fSkpOwogICAgICAgIGNvbnN0IGNpZCA9IGJkLmNvYWNoX2lkIHx8IGJkLmNvYWNoSWQgfHwgYmQuaWQ7CiAgICAgICAgY29uc3QgcGluID0gU3RyaW5nKGJkLnBpbiB8fCBiZC5wYXNzd29yZCB8fCAnJyk7CiAgICAgICAgaWYgKCFjaWQgfHwgIXBpbikgcmV0dXJuIG5ldyBSZXNwb25zZShKU09OLnN0cmluZ2lmeSh7b2s6ZmFsc2UsZXJyb3I6J01pc3NpbmcgY29hY2hfaWQgb3IgcGluJ30pLCB7c3RhdHVzOjQwMCwgaGVhZGVyczp7J0NvbnRlbnQtVHlwZSc6J2FwcGxpY2F0aW9uL2pzb24nLCdBY2Nlc3MtQ29udHJvbC1BbGxvdy1PcmlnaW4nOicqJ319KTsKICAgICAgICBjb25zdCB2ciA9IGF3YWl0IGZldGNoKCdodHRwczovL3NseS1hcGkubHVja2RyYWdvbi5pby9hcGkvY29hY2hlcy8nK2NpZCsnL3BpbicsIHttZXRob2Q6J1BBVENIJywgaGVhZGVyczp7J0NvbnRlbnQtVHlwZSc6J2FwcGxpY2F0aW9uL2pzb24nfSwgYm9keTogSlNPTi5zdHJpbmdpZnkoe2N1cnJlbnRfcGluOnBpbiwgbmV3X3BpbjpwaW59KX0pOwogICAgICAgIGNvbnN0IHZkID0gYXdhaXQgdnIuanNvbigpOwogICAgICAgIGlmICh2ZC5vaykgewogICAgICAgICAgY29uc3QgY3MgPSBhd2FpdCAoYXdhaXQgZmV0Y2goJ2h0dHBzOi8vc2x5LWFwaS5sdWNrZHJhZ29uLmlvL2FwaS9jb2FjaGVzJykpLmpzb24oKTsKICAgICAgICAgIGNvbnN0IGNvYWNoID0gQXJyYXkuaXNBcnJheShjcykgPyBjcy5maW5kKGMgPT4gU3RyaW5nKGMuaWQpID09PSBTdHJpbmcoY2lkKSkgOiBudWxsOwogICAgICAgICAgcmV0dXJuIG5ldyBSZXNwb25zZShKU09OLnN0cmluZ2lmeSh7b2s6dHJ1ZSwgY29hY2h9KSwge2hlYWRlcnM6eydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJywnQWNjZXNzLUNvbnRyb2wtQWxsb3ctT3JpZ2luJzonKid9fSk7CiAgICAgICAgfQogICAgICAgIHJldHVybiBuZXcgUmVzcG9uc2UoSlNPTi5zdHJpbmdpZnkoe29rOmZhbHNlLGVycm9yOnZkLmVycm9yfHwnSW52YWxpZCBQSU4nfSksIHtzdGF0dXM6NDAxLCBoZWFkZXJzOnsnQ29udGVudC1UeXBlJzonYXBwbGljYXRpb24vanNvbicsJ0FjY2Vzcy1Db250cm9sLUFsbG93LU9yaWdpbic6JyonfX0pOwogICAgICB9IGNhdGNoIChlKSB7IHJldHVybiBuZXcgUmVzcG9uc2UoSlNPTi5zdHJpbmdpZnkoe29rOmZhbHNlLGVycm9yOlN0cmluZyhlKX0pLCB7c3RhdHVzOjUwMH0pOyB9CiAgICB9CgogICAgaWYgKHAgPT09ICcvYXBpL3NxdWlnZ2xlJykgewogICAgICBjb25zdCBxID0gdS5zZWFyY2hQYXJhbXM7CiAgICAgIGNvbnN0IHVybCA9IGBodHRwczovL2FwaS5zcXVpZ2dsZS5jb20uYXUvP3E9Z2FtZXM7eWVhcj0ke3EuZ2V0KCd5ZWFyJyl8fCcyMDI2J307cm91bmQ9JHtxLmdldCgncm91bmQnKXx8Jyd9YDsKICAgICAgdHJ5IHsKICAgICAgICBjb25zdCByID0gYXdhaXQgZmV0Y2godXJsLCB7aGVhZGVyczp7J1VzZXItQWdlbnQnOidTTFktRmFudGFzeS1BRkwvMS4wIChzbHktYXBwIHdvcmtlcjsgcGFkZHlAbHVja2RyYWdvbi5pbyknfX0pOwogICAgICAgIGNvbnN0IHRleHQgPSBhd2FpdCByLnRleHQoKTsKICAgICAgICByZXR1cm4gbmV3IFJlc3BvbnNlKHRleHQsIHtzdGF0dXM6ci5zdGF0dXMsIGhlYWRlcnM6eydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJywnQWNjZXNzLUNvbnRyb2wtQWxsb3ctT3JpZ2luJzonKicsJ0NhY2hlLUNvbnRyb2wnOidwdWJsaWMsIG1heC1hZ2U9NjAnfX0pOwogICAgICB9IGNhdGNoIChlKSB7CiAgICAgICAgcmV0dXJuIG5ldyBSZXNwb25zZShKU09OLnN0cmluZ2lmeSh7ZXJyb3I6U3RyaW5nKGUpfSksIHtzdGF0dXM6NTAyLCBoZWFkZXJzOnsnQ29udGVudC1UeXBlJzonYXBwbGljYXRpb24vanNvbid9fSk7CiAgICAgIH0KICAgIH0KCiAgICBpZiAoKHAgPT09ICcvYXBpL2JhbnRlcicgfHwgcCA9PT0gJy9hcGkvY2hhdCcpICYmIChyZXEubWV0aG9kID09PSAnR0VUJyB8fCByZXEubWV0aG9kID09PSAnUE9TVCcpKSB7CiAgICAgIGNvbnN0IHIgPSBhd2FpdCBmZXRjaCgnaHR0cHM6Ly9zbHktYXBpLmx1Y2tkcmFnb24uaW8vYXBpL21lc3NhZ2VzJyt1LnNlYXJjaCwge21ldGhvZDpyZXEubWV0aG9kLCBoZWFkZXJzOnJlcS5oZWFkZXJzLCBib2R5OnJlcS5tZXRob2Q9PT0nUE9TVCc/cmVxLmJvZHk6dW5kZWZpbmVkfSk7CiAgICAgIHJldHVybiBuZXcgUmVzcG9uc2UoYXdhaXQgci50ZXh0KCksIHtzdGF0dXM6ci5zdGF0dXMsIGhlYWRlcnM6eydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJywnQWNjZXNzLUNvbnRyb2wtQWxsb3ctT3JpZ2luJzonKid9fSk7CiAgICB9CgogICAgaWYgKHAuc3RhcnRzV2l0aCgnL2FwaS8nKSkgewogICAgICByZXR1cm4gZmV0Y2goJ2h0dHBzOi8vc2x5LWFwaS5sdWNrZHJhZ29uLmlvJytwK3Uuc2VhcmNoLCB7bWV0aG9kOnJlcS5tZXRob2QsIGhlYWRlcnM6cmVxLmhlYWRlcnMsIGJvZHk6cmVxLmJvZHl9KTsKICAgIH0KCiAgICBsZXQgaHRtbCA9IGF3YWl0IGVudi5TTFlfU1RBVElDLmdldCgnc3RhbmRhbG9uZS1pbmRleC5odG1sJyk7CiAgICBpZiAoIWh0bWwpIHJldHVybiBuZXcgUmVzcG9uc2UoJ1N0YW5kYWxvbmUgSFRNTCBub3QgaW4gS1YnLCB7c3RhdHVzOjUwMH0pOwogICAgLy8gU3RyaXAgYW55IEhUVFAgcmVzcG9uc2UgaGVhZGVyIGxpbmVzIGFjY2lkZW50YWxseSBzdG9yZWQgYXQgdG9wIG9mIEtWIHZhbHVlCiAgICBpZiAoaHRtbC5zdGFydHNXaXRoKCdIVFRQICcpKSB7CiAgICAgIGNvbnN0IGJvZHlTdGFydCA9IGh0bWwuaW5kZXhPZignPCEnKTsKICAgICAgaWYgKGJvZHlTdGFydCA+IDApIGh0bWwgPSBodG1sLnNsaWNlKGJvZHlTdGFydCk7CiAgICB9CgogICAgLy8gPT09IEZ1bmQgdGFiIHBhdGNoZXMgKGFwcGxpZWQgYXQgc2VydmUgdGltZSkgPT09CiAgICAvLyBQYXRjaCAxOiBBZGQgT1VUU1RBTkRJTkcgY29sdW1uIHRvIGZ1bmQgc3VtbWFyeSBjYXJkCiAgICBodG1sID0gaHRtbC5yZXBsYWNlKAogICAgICAnPGRpdiBzdHlsZT0iZGlzcGxheTpmbGV4O2p1c3RpZnktY29udGVudDpzcGFjZS1iZXR3ZWVuO2FsaWduLWl0ZW1zOmZsZXgtc3RhcnQ7bWFyZ2luLWJvdHRvbTowLjc1cmVtIj5cbiAgICAgICAgICAgICAgICA8ZGl2PjxkaXYgc3R5bGU9ImZvbnQtc2l6ZTowLjc1cmVtO2NvbG9yOnZhcigtLXRleHQtc2Vjb25kYXJ5KTttYXJnaW4tYm90dG9tOjAuMnJlbSI+Q09MTEVDVEVEPC9kaXY+PGRpdiBpZD0iZnVuZENvbGxlY3RlZCIgc3R5bGU9ImZvbnQtc2l6ZToycmVtO2ZvbnQtd2VpZ2h0OjgwMDtjb2xvcjp2YXIoLS1hY2NlbnQyKSI+JDA8L2Rpdj48L2Rpdj5cbiAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPSJ0ZXh0LWFsaWduOnJpZ2h0Ij48ZGl2IHN0eWxlPSJmb250LXNpemU6MC43NXJlbTtjb2xvcjp2YXIoLS10ZXh0LXNlY29uZGFyeSk7bWFyZ2luLWJvdHRvbTowLjJyZW0iPkJBTEFOQ0U8L2Rpdj48ZGl2IGlkPSJmdW5kQmFsYW5jZSIgc3R5bGU9ImZvbnQtc2l6ZToycmVtO2ZvbnQtd2VpZ2h0OjgwMDtjb2xvcjp2YXIoLS1hY2NlbnQpIj4kMDwvZGl2PjwvZGl2PlxuICAgICAgICAgICAgPC9kaXY+JywKICAgICAgJzxkaXYgc3R5bGU9ImRpc3BsYXk6ZmxleDtqdXN0aWZ5LWNvbnRlbnQ6c3BhY2UtYmV0d2VlbjthbGlnbi1pdGVtczpmbGV4LXN0YXJ0O21hcmdpbi1ib3R0b206MC43NXJlbSI+PGRpdj48ZGl2IHN0eWxlPSJmb250LXNpemU6MC43NXJlbTtjb2xvcjp2YXIoLS10ZXh0LXNlY29uZGFyeSk7bWFyZ2luLWJvdHRvbTowLjJyZW0iPkNPTExFQ1RFRDwvZGl2PjxkaXYgaWQ9ImZ1bmRDb2xsZWN0ZWQiIHN0eWxlPSJmb250LXNpemU6MS44cmVtO2ZvbnQtd2VpZ2h0OjgwMDtjb2xvcjp2YXIoLS1hY2NlbnQyKSI+JDA8L2Rpdj48L2Rpdj48ZGl2IHN0eWxlPSJ0ZXh0LWFsaWduOmNlbnRlciI+PGRpdiBzdHlsZT0iZm9udC1zaXplOjAuNzVyZW07Y29sb3I6dmFyKC0tdGV4dC1zZWNvbmRhcnkpO21hcmdpbi1ib3R0b206MC4ycmVtIj5PVVRTVEFORElORzwvZGl2PjxkaXYgaWQ9ImZ1bmRPdXRzdGFuZGluZyIgc3R5bGU9ImZvbnQtc2l6ZToxLjhyZW07Zm9udC13ZWlnaHQ6ODAwO2NvbG9yOiNlNzRjM2MiPiQ4MDA8L2Rpdj48L2Rpdj48ZGl2IHN0eWxlPSJ0ZXh0LWFsaWduOnJpZ2h0Ij48ZGl2IHN0eWxlPSJmb250LXNpemU6MC43NXJlbTtjb2xvcjp2YXIoLS10ZXh0LXNlY29uZGFyeSk7bWFyZ2luLWJvdHRvbTowLjJyZW0iPkJBTEFOQ0U8L2Rpdj48ZGl2IGlkPSJmdW5kQmFsYW5jZSIgc3R5bGU9ImZvbnQtc2l6ZToxLjhyZW07Zm9udC13ZWlnaHQ6ODAwO2NvbG9yOnZhcigtLWFjY2VudCkiPiQwPC9kaXY+PC9kaXY+PC9kaXY+JwogICAgKTsKICAgIC8vIFBhdGNoIDI6IFVwZGF0ZSBsb2FkU2x1c2hGdW5kIHRvIGNvbXB1dGUgYW5kIHNldCBPVVRTVEFORElORwogICAgaHRtbCA9IGh0bWwucmVwbGFjZSgKICAgICAgImRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdmdW5kUHJvZ3Jlc3NMYWJlbCcpLnRleHRDb250ZW50ID0gYCR7cGFpZENvdW50fSBvZiAke3BMaXN0Lmxlbmd0aH0gcGFpZGA7IiwKICAgICAgImRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdmdW5kUHJvZ3Jlc3NMYWJlbCcpLnRleHRDb250ZW50ID0gYCR7cGFpZENvdW50fSBvZiAke3BMaXN0Lmxlbmd0aH0gcGFpZGA7Y29uc3QgX291dEVsPWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdmdW5kT3V0c3RhbmRpbmcnKTtpZihfb3V0RWwpX291dEVsLnRleHRDb250ZW50PSckJCcrKHRvdGFsLWNvbGxlY3RlZCk7IgogICAgKTsKICAgIC8vIFBhdGNoIDM6IENsZWFyIGZpeHR1cmVzIGNhY2hlIGFmdGVyIHJlY2FsYyBzbyBzY29yZXMgdXBkYXRlCiAgICBodG1sID0gaHRtbC5yZXBsYWNlKAogICAgICAiICAgIHJlbmRlckZpeHR1cmVzKCk7XG4gICAgcmVuZGVyU3RhdHMoKTtcbiAgICBsb2FkQWRtaW5TY29yZXMoKTsiLAogICAgICAiICAgIF9zbHlGaXh0dXJlc0NhY2hlPXt9O1xuICAgIHJlbmRlckZpeHR1cmVzKCk7XG4gICAgcmVuZGVyU3RhdHMoKTtcbiAgICBsb2FkQWRtaW5TY29yZXMoKTsiCiAgICApOwogICAgLy8gUGF0Y2ggNDogRml4IGxvYWRIb21lUGFnZSByb3VuZCBzZWxlY3Rpb24g4oCUICd1cGNvbWluZycgbmV2ZXIgbWF0Y2hlcywgc2hvdWxkIGJlICdvcGVuJwogICAgaHRtbCA9IGh0bWwucmVwbGFjZSgKICAgICAgImFsbFJvdW5kcy5maW5kKHIgPT4gci5zdGF0dXMgPT09ICd1cGNvbWluZycpIiwKICAgICAgImFsbFJvdW5kcy5maW5kKHIgPT4gci5zdGF0dXMgPT09ICdvcGVuJykiCiAgICApOwogICAgLy8gPT09IEVuZCBGdW5kIHRhYiBwYXRjaGVzID09PQoKICAgIHJldHVybiBuZXcgUmVzcG9uc2UoaHRtbCwge2hlYWRlcnM6eydDb250ZW50LVR5cGUnOid0ZXh0L2h0bWw7IGNoYXJzZXQ9dXRmLTgnLCdDYWNoZS1Db250cm9sJzonbm8tY2FjaGUsIG5vLXN0b3JlLCBtdXN0LXJldmFsaWRhdGUsIG1heC1hZ2U9MCd9fSk7CiAgfQp9Owo=
+// sly-app v5.8 — standalone serve + Squiggle proxy + Fund tab patches
+// Updated 2026-05-03: v5.8 fix Home status label for 'open' rounds; v5.7 fix loadHomePage round selection
+export default {
+  async fetch(req, env) {
+    const u = new URL(req.url);
+    const p = u.pathname;
+    if (p.includes('service-worker') || (p.includes('sw') && p.endsWith('.js'))) return new Response('', {status:404});
+    if (p.startsWith('/api/') && req.method === 'OPTIONS') return new Response(null, {status:204, headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,PATCH,PUT,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'}});
+
+    if (p === '/api/login' && req.method === 'POST') {
+      try {
+        const bd = await req.json().catch(() => ({}));
+        const cid = bd.coach_id || bd.coachId || bd.id;
+        const pin = String(bd.pin || bd.password || '');
+        if (!cid || !pin) return new Response(JSON.stringify({ok:false,error:'Missing coach_id or pin'}), {status:400, headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}});
+        const vr = await fetch('https://sly-api.luckdragon.io/api/coaches/'+cid+'/pin', {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({current_pin:pin, new_pin:pin})});
+        const vd = await vr.json();
+        if (vd.ok) {
+          const cs = await (await fetch('https://sly-api.luckdragon.io/api/coaches')).json();
+          const coach = Array.isArray(cs) ? cs.find(c => String(c.id) === String(cid)) : null;
+          return new Response(JSON.stringify({ok:true, coach}), {headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}});
+        }
+        return new Response(JSON.stringify({ok:false,error:vd.error||'Invalid PIN'}), {status:401, headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}});
+      } catch (e) { return new Response(JSON.stringify({ok:false,error:String(e)}), {status:500}); }
+    }
+
+    if (p === '/api/squiggle') {
+      const q = u.searchParams;
+      const url = `https://api.squiggle.com.au/?q=games;year=${q.get('year')||'2026'};round=${q.get('round')||''}`;
+      try {
+        const r = await fetch(url, {headers:{'User-Agent':'SLY-Fantasy-AFL/1.0 (sly-app worker; paddy@luckdragon.io)'}});
+        const text = await r.text();
+        return new Response(text, {status:r.status, headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'public, max-age=60'}});
+      } catch (e) {
+        return new Response(JSON.stringify({error:String(e)}), {status:502, headers:{'Content-Type':'application/json'}});
+      }
+    }
+
+    if ((p === '/api/banter' || p === '/api/chat') && (req.method === 'GET' || req.method === 'POST')) {
+      const r = await fetch('https://sly-api.luckdragon.io/api/messages'+u.search, {method:req.method, headers:req.headers, body:req.method==='POST'?req.body:undefined});
+      return new Response(await r.text(), {status:r.status, headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}});
+    }
+
+    if (p.startsWith('/api/')) {
+      return fetch('https://sly-api.luckdragon.io'+p+u.search, {method:req.method, headers:req.headers, body:req.body});
+    }
+
+    let html = await env.SLY_STATIC.get('standalone-index.html');
+    if (!html) return new Response('Standalone HTML not in KV', {status:500});
+    // Strip any HTTP response header lines accidentally stored at top of KV value
+    if (html.startsWith('HTTP ')) {
+      const bodyStart = html.indexOf('<!');
+      if (bodyStart > 0) html = html.slice(bodyStart);
+    }
+
+    // === Fund tab patches (applied at serve time) ===
+    // Patch 1: Add OUTSTANDING column to fund summary card
+    html = html.replace(
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem">\n                <div><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.2rem">COLLECTED</div><div id="fundCollected" style="font-size:2rem;font-weight:800;color:var(--accent2)">$0</div></div>\n                <div style="text-align:right"><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.2rem">BALANCE</div><div id="fundBalance" style="font-size:2rem;font-weight:800;color:var(--accent)">$0</div></div>\n            </div>',
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem"><div><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.2rem">COLLECTED</div><div id="fundCollected" style="font-size:1.8rem;font-weight:800;color:var(--accent2)">$0</div></div><div style="text-align:center"><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.2rem">OUTSTANDING</div><div id="fundOutstanding" style="font-size:1.8rem;font-weight:800;color:#e74c3c">$800</div></div><div style="text-align:right"><div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.2rem">BALANCE</div><div id="fundBalance" style="font-size:1.8rem;font-weight:800;color:var(--accent)">$0</div></div></div>'
+    );
+    // Patch 2: Update loadSlushFund to compute and set OUTSTANDING
+    html = html.replace(
+      "document.getElementById('fundProgressLabel').textContent = `${paidCount} of ${pList.length} paid`;",
+      "document.getElementById('fundProgressLabel').textContent = `${paidCount} of ${pList.length} paid`;const _outEl=document.getElementById('fundOutstanding');if(_outEl)_outEl.textContent='$$'+(total-collected);"
+    );
+    // Patch 3: Clear fixtures cache after recalc so scores update
+    html = html.replace(
+      "    renderFixtures();\n    renderStats();\n    loadAdminScores();",
+      "    _slyFixturesCache={};\n    renderFixtures();\n    renderStats();\n    loadAdminScores();"
+    );
+    // Patch 4: Fix loadHomePage round selection — 'upcoming' never matches, should be 'open'
+    html = html.replace(
+      "allRounds.find(r => r.status === 'upcoming')",
+      "allRounds.find(r => r.status === 'open')"
+    );
+    // Patch 5: Fix Home status label — 'open' round should show '📝 Open' not '🔒 Locked'
+    html = html.replace(
+      "liveRound.status === 'completed' ? '✅ Completed' : '🔒 Locked'",
+      "liveRound.status === 'completed' ? '✅ Completed' : liveRound.status === 'open' ? '📝 Open' : '🔒 Locked'"
+    );
+    // === End patches ===
+
+    return new Response(html, {headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache, no-store, must-revalidate, max-age=0'}});
+  }
+};
