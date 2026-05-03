@@ -1,5 +1,5 @@
 // sly-app v5.8 — standalone serve + Squiggle proxy + Fund tab patches
-// Updated 2026-05-03: v5.8 fix Home status label for 'open' rounds; v5.7 fix loadHomePage round selection
+// Updated 2026-05-03: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
     const u = new URL(req.url);
@@ -74,10 +74,10 @@ export default {
       "allRounds.find(r => r.status === 'upcoming')",
       "allRounds.find(r => r.status === 'open')"
     );
-    // Patch 5: Fix Home status label — 'open' round should show '📝 Open' not '🔒 Locked'
+    // Patch 5: Fix Home status label — 'open' round shows '📝 Open' not '🔒 Locked'
     html = html.replace(
-      "liveRound.status === 'completed' ? '✅ Completed' : '🔒 Locked'",
-      "liveRound.status === 'completed' ? '✅ Completed' : liveRound.status === 'open' ? '📝 Open' : '🔒 Locked'"
+      "liveRound.status === 'completed' ? '\\u2705 Completed' : '\\u{1F512} Locked'",
+      "liveRound.status === 'completed' ? '\\u2705 Completed' : liveRound.status === 'open' ? '\\u{1F4DD} Open' : '\\u{1F512} Locked'"
     );
     // === End patches ===
 
