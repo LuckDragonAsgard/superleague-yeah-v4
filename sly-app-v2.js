@@ -1,4 +1,4 @@
-// sly-app v5.10 — standalone serve + Squiggle proxy + Fund tab patches
+// sly-app v5.11 — standalone serve + Squiggle proxy + Fund tab patches
 // Updated 2026-05-03: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -83,7 +83,7 @@ export default {
     // which would break dark-bg cards like trophy cabinet that use hardcoded #16213e backgrounds)
     html = html.replace(
       '</style>',
-      '.light-mode .chat-msg-text{color:#1a1a2e!important}.light-mode .chat-msg-name{color:#1a1a2e!important}.light-mode .chat-msg-time{color:#666!important}</style>'
+      'body.light-mode #pageChat .chat-msg-text{color:#1a1a2e!important}body.light-mode #pageChat .chat-msg-name{color:#1a1a2e!important}body.light-mode #pageChat .chat-msg-time{color:#666!important}</style>'
     );
     // === End patches ===
 
