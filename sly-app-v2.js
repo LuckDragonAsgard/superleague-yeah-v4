@@ -62,7 +62,7 @@ export default {
     // Patch 2: Update loadSlushFund to compute and set OUTSTANDING
     html = html.replace(
       "document.getElementById('fundProgressLabel').textContent = `${paidCount} of ${pList.length} paid`;",
-      "document.getElementById('fundProgressLabel').textContent = `${paidCount} of ${pList.length} paid`;const _outEl=document.getElementById('fundOutstanding');if(_outEl)_outEl.textContent='$'+(total-collected);"
+      "document.getElementById('fundProgressLabel').textContent = `${paidCount} of ${pList.length} paid`;const _outEl=document.getElementById('fundOutstanding');if(_outEl)_outEl.textContent='$$'+(total-collected);"
     );
     // Patch 3: Clear fixtures cache after recalc so scores update
     html = html.replace(
