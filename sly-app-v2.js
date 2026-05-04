@@ -1,4 +1,5 @@
 // sly-app v5.19 — standalone serve + Squiggle proxy + Fund tab patches
+const VERSION = 'v5.20';
 // Updated 2026-05-04: v5.14 + Rules tab + every-player tracker; v5.13: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -8,7 +9,7 @@ export default {
     if (p.startsWith('/api/') && req.method === 'OPTIONS') return new Response(null, {status:204, headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,PATCH,PUT,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'}});
 
     if (p === '/_version') {
-      return new Response(JSON.stringify({v:'v5.19',t:Date.now()}), {headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-cache, no-store, must-revalidate'}});
+      return new Response(JSON.stringify({v: VERSION,t:Date.now()}), {headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-cache, no-store, must-revalidate'}});
     }
     if (p === '/api/login' && req.method === 'POST') {
       try {
@@ -240,7 +241,7 @@ export default {
     // and reloads if a new sly-app version is live, so users don't see stale UI after a deploy.
     html = html.replace(
       '</head>',
-      '<meta name="sly-app-version" content="v5.19">\n<script>(function(){var V="v5.16";var notified=false;function check(){fetch("/_version?n="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(d){if(d&&d.v&&d.v!==V&&!notified){notified=true;console.log("[sly-app] new version",d.v,"available, reloading...");setTimeout(function(){location.reload(true)},500)}}).catch(function(){})}setInterval(check,90000);setTimeout(check,5000);})();</script></head>'
+      `<meta name="sly-app-version" content="${VERSION}">\n<script>(function(){var V="${VERSION}";var notified=false;function check(){fetch("/_version?n="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(d){if(d&&d.v&&d.v!==V&&!notified){notified=true;console.log("[sly-app] new version",d.v,"available, reloading...");setTimeout(function(){location.reload(true)},500)}}).catch(function(){})}setInterval(check,90000);setTimeout(check,5000);})();</script></head>`
     );
     // Patch 16: Add crossorigin="anonymous" to coach-logo-img imgs.
     // Without this, the canvas in SLY-FIX v6 is tainted (browser cache reuses no-cors response),
