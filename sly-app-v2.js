@@ -1,4 +1,4 @@
-// sly-app v5.16 — standalone serve + Squiggle proxy + Fund tab patches
+// sly-app v5.17 — standalone serve + Squiggle proxy + Fund tab patches
 // Updated 2026-05-04: v5.14 + Rules tab + every-player tracker; v5.13: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -7,6 +7,9 @@ export default {
     if (p.includes('service-worker') || (p.includes('sw') && p.endsWith('.js'))) return new Response('', {status:404});
     if (p.startsWith('/api/') && req.method === 'OPTIONS') return new Response(null, {status:204, headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,PATCH,PUT,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'}});
 
+    if (p === '/_version') {
+      return new Response(JSON.stringify({v:'v5.17',t:Date.now()}), {headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-cache, no-store, must-revalidate'}});
+    }
     if (p === '/api/login' && req.method === 'POST') {
       try {
         const bd = await req.json().catch(() => ({}));
@@ -233,6 +236,12 @@ export default {
     );
     // Patch 14b: also nuke any inline mix-blend on the served HTML in case styles repeat in scoped scopes
     html = html.replace(/mix-blend-mode:\s*multiply\s*!important;?/g, '');
+    // Patch 15: Auto-refresh — version poll. Browser checks /_version every 90s
+    // and reloads if a new sly-app version is live, so users don't see stale UI after a deploy.
+    html = html.replace(
+      '</head>',
+      '<meta name="sly-app-version" content="v5.17">\n<script>(function(){var V="v5.16";var notified=false;function check(){fetch("/_version?n="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(d){if(d&&d.v&&d.v!==V&&!notified){notified=true;console.log("[sly-app] new version",d.v,"available, reloading...");setTimeout(function(){location.reload(true)},500)}}).catch(function(){})}setInterval(check,90000);setTimeout(check,5000);})();</script></head>'
+    );
     // === End patches ===
 
     return new Response(html, {headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache, no-store, must-revalidate, max-age=0'}});
