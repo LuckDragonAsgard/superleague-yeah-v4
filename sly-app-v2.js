@@ -1,4 +1,4 @@
-// sly-app v5.14 — standalone serve + Squiggle proxy + Fund tab patches
+// sly-app v5.16 — standalone serve + Squiggle proxy + Fund tab patches
 // Updated 2026-05-04: v5.14 + Rules tab + every-player tracker; v5.13: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -225,6 +225,14 @@ export default {
     async function loadAutoPickStatus() {`;
     html = html.replace('async function loadAutoPickStatus() {', RULES_JS);
 
+    // Patch 14: Fix invisible jumpers — mix-blend-mode:multiply turned dark logos invisible on dark cards.
+    // Cards use hardcoded var(--card) which stays dark even in light mode, so multiply broke logos everywhere.
+    html = html.replace(
+      'img[src*="team-logos"],img[src*="hzkodmxrranessgbjjjl.supabase"]{\n  background:transparent!important;\n  filter:drop-shadow(0 1px 4px rgba(0,0,0,0.55))!important;\n  mix-blend-mode:multiply!important;\n}',
+      'img[src*="team-logos"],img[src*="hzkodmxrranessgbjjjl.supabase"]{background:transparent!important;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.55))!important}'
+    );
+    // Patch 14b: also nuke any inline mix-blend on the served HTML in case styles repeat in scoped scopes
+    html = html.replace(/mix-blend-mode:\s*multiply\s*!important;?/g, '');
     // === End patches ===
 
     return new Response(html, {headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache, no-store, must-revalidate, max-age=0'}});
