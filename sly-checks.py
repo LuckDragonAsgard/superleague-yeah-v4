@@ -122,7 +122,7 @@ def check_auth_gates():
         api_said_auth = False
         try:
             j = json.loads(body_resp)
-            if isinstance(j, dict) and j.get("error") and any(k in (j.get("error","").lower()) for k in ["unauth","forbidden","pin","token","auth"]):
+            if isinstance(j, dict) and j.get("error") and any(k in (j.get("error","").lower()) for k in ["unauth","forbidden","pin","token","auth","admin access","admin only"]):
                 api_said_auth = True
         except Exception: pass
         if code in (401, 403) and api_said_auth:

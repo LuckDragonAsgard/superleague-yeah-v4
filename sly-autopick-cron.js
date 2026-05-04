@@ -1,14 +1,14 @@
 // sly-autopick-cron — runs every 15 min, finds rounds locking soon, auto-picks for opted-in coaches
 export default {
   async scheduled(event, env, ctx) {
-    return await runAutoPicks();
+    return await runAutoPicks(env);
   },
-  async fetch(req) {
-    return new Response(JSON.stringify(await runAutoPicks()), { headers: { 'Content-Type': 'application/json' } });
+  async fetch(req, env) {
+    return new Response(JSON.stringify(await runAutoPicks(env)), { headers: { 'Content-Type': 'application/json' } });
   }
 };
 
-async function runAutoPicks() {
+async function runAutoPicks(env) {
   const API = 'https://sly-api.luckdragon.io';
   // Find next round whose lock_time is within the next 30 hours and not yet locked
   const rounds = await (await fetch(API + '/api/rounds')).json();
@@ -27,7 +27,7 @@ async function runAutoPicks() {
       try {
         const r = await fetch(API + '/api/auto_pick', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (env.MIGRATION_TOKEN || 'SLY_MIGRATION_2026_04_25') },
           body: JSON.stringify({ coach_id: coach.id, round_id: round.id })
         });
         const j = await r.json();

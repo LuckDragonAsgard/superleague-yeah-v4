@@ -1,5 +1,5 @@
-// sly-app v5.19 — standalone serve + Squiggle proxy + Fund tab patches
-const VERSION = 'v5.20';
+// sly-app v5.21 — standalone serve + Squiggle proxy + Fund tab patches
+const VERSION = 'v5.23';
 // Updated 2026-05-04: v5.14 + Rules tab + every-player tracker; v5.13: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -258,6 +258,24 @@ export default {
     html = html.replace(
       "if(wCnt/(px.length/4)>0.45){ resolve(null); return; }",
       "if(wCnt/(px.length/4)>0.985){ resolve(null); return; }"
+    );
+    // Patch 18: Inject auth headers on mutation requests.
+    // After login, store coach pin in sessionStorage. apiFetch wraps fetches and
+    // attaches X-Coach-Id + X-Coach-Pin so the API can authenticate the caller.
+    // Closes the unauthenticated-mutation hole (see ENGINEERING-RULES.md).
+    html = html.replace(
+      "async function apiFetch(path, opts={}) {\n    const res = await fetch(API + path,",
+      "async function apiFetch(path, opts={}) {\n    const _cid = (window.currentCoach && window.currentCoach.id) || (typeof currentCoach!=='undefined' && currentCoach && currentCoach.id) || null;\n    const _pin = sessionStorage.getItem('sly_coach_pin') || '';\n    if (_cid && _pin && !opts.headers?.['X-Coach-Id']) { opts.headers = { ...(opts.headers||{}), 'X-Coach-Id': String(_cid), 'X-Coach-Pin': _pin }; }\n    const res = await fetch(API + path,"
+    );
+    // Login success: store the pin used so subsequent apiFetch can authenticate
+    html = html.replace(
+      "currentCoach = coach;",
+      "currentCoach = coach; try { if (typeof pin!=='undefined') sessionStorage.setItem('sly_coach_pin', String(pin)); } catch(e){}"
+    );
+    // Logout / clear: also wipe the pin
+    html = html.replace(
+      "localStorage.removeItem('sly_coach_id');",
+      "localStorage.removeItem('sly_coach_id'); try { sessionStorage.removeItem('sly_coach_pin'); } catch(e){}"
     );
     // === End patches ===
 
