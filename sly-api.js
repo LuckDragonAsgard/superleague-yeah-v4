@@ -148,6 +148,25 @@ if(p==='/api/stats'&&m==='GET'){const rd=+u.searchParams.get('round_id')||0,rn=+
 if(p==='/api/config'&&m==='GET'){const DEFAULTS={'sly_gold':{price:50,features:['Auto-submit team each week','Auto-draft for you','AI recommendations','Best-for-team sort','Gold badge ⭐','Early access']}};const key=u.searchParams.get('key');if(key){let row=null;try{row=await db.prepare('SELECT value FROM config WHERE key=?').bind(key).first()}catch(e){}if(!row)try{row=await db.prepare('SELECT value FROM sly_config WHERE key=?').bind(key).first()}catch(e){}if(row?.value){try{return J({key,value:JSON.parse(row.value)})}catch(e){return J({key,value:row.value})}}return J(DEFAULTS[key]?{key,value:DEFAULTS[key]}:null)}let cfg={...DEFAULTS};try{const a=await db.prepare('SELECT key,value FROM config').all();for(const r of(a.results||[]))cfg[r.key]=r.value}catch(e){}try{const b=await db.prepare('SELECT key,value FROM sly_config').all();for(const r of(b.results||[]))cfg[r.key]=r.value}catch(e){}return J(cfg)}
 if(p==='/api/injuries'&&m==='GET'){const row=await db.prepare("SELECT value FROM config WHERE key='injuries'").first();if(!row?.value)return J([]);try{return J(JSON.parse(row.value))}catch{return J([])}}
 if(p==='/api/autopick-status'&&m==='GET'){const{results}=await db.prepare("SELECT c.id AS coach_id,c.name,c.team_name,c.color,c.avatar_emoji,c.logo_url,COALESCE(c.auto_pick_enabled,0) AS auto_pick_enabled,COALESCE(p.autopick_paid,0) AS autopick_paid FROM coaches c LEFT JOIN payments p ON p.coach_id=c.id WHERE c.auto_pick_enabled=1 ORDER BY c.id").all();return J(results)}
+
+if(p==='/api/usage-tracker'&&m==='GET'){
+  const co=+u.searchParams.get('coach_id')||0;
+  let q="SELECT c.id AS coach_id,c.name AS coach_name,c.team_name,c.color,c.avatar_emoji,p.id AS player_id,p.name AS player_name,p.position,p.team,CASE WHEN EXISTS(SELECT 1 FROM round_picks rp WHERE rp.coach_id=c.id AND rp.player_id=p.id) THEN 1 ELSE 0 END AS used FROM coaches c JOIN players p ON p.coach_id=c.id";
+  const ps=[];
+  if(co){q+=' WHERE c.id=?';ps.push(co);}
+  q+=' ORDER BY c.id, used DESC, p.name';
+  const{results}=await db.prepare(q).bind(...ps).all();
+  const byCoach={};
+  for(const r of results){
+    if(!byCoach[r.coach_id])byCoach[r.coach_id]={coach_id:r.coach_id,coach_name:r.coach_name,team_name:r.team_name,color:r.color,avatar_emoji:r.avatar_emoji,squad_size:0,used_count:0,unused:[]};
+    byCoach[r.coach_id].squad_size++;
+    if(r.used)byCoach[r.coach_id].used_count++;
+    else byCoach[r.coach_id].unused.push({player_id:r.player_id,name:r.player_name,position:r.position,team:r.team});
+  }
+  const out=Object.values(byCoach).map(c=>({...c,unused_count:c.unused.length,compliance_pct:c.squad_size?Math.round(c.used_count/c.squad_size*100):0}));
+  out.sort((a,b)=>b.compliance_pct-a.compliance_pct||b.used_count-a.used_count);
+  return J(out);
+}
 if(p==='/api/payments'&&m==='GET'){const{results}=await db.prepare("SELECT c.id,c.id AS coach_id,c.name,c.team_name,c.color,c.avatar_emoji,c.logo_url,COALESCE(p.paid,0) AS paid,COALESCE(p.amount,50) AS amount,COALESCE(p.tier,'base') AS tier,COALESCE(p.gold_balance,0) AS gold_balance,COALESCE(p.autopick_paid,0) AS autopick_paid,p.note,p.updated_at FROM coaches c LEFT JOIN payments p ON p.coach_id=c.id ORDER BY c.id").all();return J(results)}
 const paym=p.match(/^\/api\/payments\/(\d+)$/);if(paym&&m==='PATCH'){const ci=+paym[1];const b=await R(req);const s=[],v=[];for(const k of ['paid','amount','note','tier','gold_balance','autopick_paid'])if(k in b){s.push(`${k}=?`);v.push(b[k])}if(!s.length)return E('No fields');s.push("updated_at=datetime('now')");v.push(ci);await db.prepare('INSERT OR IGNORE INTO payments (coach_id,paid,amount) VALUES (?,0,50)').bind(ci).run();await db.prepare(`UPDATE payments SET ${s.join(',')} WHERE coach_id=?`).bind(...v).run();return J({ok:true})}
 if(p==='/api/trades'&&m==='GET'){const{results}=await db.prepare('SELECT t.*,p.name AS proposer_name,tg.name AS target_name FROM trades t LEFT JOIN coaches p ON p.id=t.proposer_id LEFT JOIN coaches tg ON tg.id=t.target_id ORDER BY t.created_at DESC').all();for(const t of results||[]){const tp=await db.prepare('SELECT * FROM trade_players WHERE trade_id=?').bind(t.id).all();t.players=tp.results||[];t.trade_players=tp.results||[]}return J(results)}

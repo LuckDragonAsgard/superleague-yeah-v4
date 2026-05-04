@@ -1,5 +1,5 @@
-// sly-app v5.13 — standalone serve + Squiggle proxy + Fund tab patches
-// Updated 2026-05-03: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
+// sly-app v5.14 — standalone serve + Squiggle proxy + Fund tab patches
+// Updated 2026-05-04: v5.14 + Rules tab + every-player tracker; v5.13: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
     const u = new URL(req.url);
@@ -120,6 +120,111 @@ export default {
       '<input type="checkbox" id="ncGroupEnc"> 🔒 End-to-end encrypted',
       '<input type="checkbox" id="ncGroupEnc"> 🔒 Make this chat private'
     );
+    // Patch 10: Rules nav button — insert before Match Day
+    html = html.replace(
+      '<div class="nav-item" data-page="pageMatchDay" onclick="switchPage(\'pageMatchDay\', this)">',
+      '<div class="nav-item" data-page="pageRules" onclick="switchPage(\'pageRules\', this); if(typeof loadRulesTab===\'function\')loadRulesTab()">\n                <span class="nav-icon">\u{1F4CB}</span>\n                <span>Rules</span>\n            </div>\n            <div class="nav-item" data-page="pageMatchDay" onclick="switchPage(\'pageMatchDay\', this)">'
+    );
+    // Patch 11: Rules page content — inject before <!-- NAV --> nav block
+    const RULES_PAGE = `<div id="pageRules" class="page">
+        <div class="section-title">\u{1F4CB} League Rules</div>
+        <div style="background:linear-gradient(135deg,rgba(0,212,255,0.1),rgba(0,255,136,0.05));border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;border:1px solid var(--border)">
+            <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary)">\u{1F4B0} ENTRY & PRIZES</div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6">• Buy-in: <strong style="color:var(--accent2)">$50</strong> per coach. SLY Gold: <strong style="color:#e8a000">+$50 ($100 total)</strong> for the badge + bigger Day of Days party kitty.<br>• Pot funds the <strong>Day of Days party</strong> at season's end.</div>
+        </div>
+        <div style="background:var(--bg-card);border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;border:1px solid var(--border)">
+            <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary)">\u{1F3C6} HOW IT WORKS</div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6">• 16 coaches, snake draft pre-season — each coach owns a squad of ~22 players.<br>• Each round: pick <strong>11 starters</strong> from your squad before lockout (Thursday 8:30am AEST).<br>• Score = sum of starters' AFL Fantasy points for the round.<br>• H2H ladder — win/loss against your fixture opponent that round.</div>
+        </div>
+        <div style="background:linear-gradient(135deg,rgba(232,160,0,0.12),rgba(245,197,24,0.06));border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;border:1px solid rgba(232,160,0,0.35)">
+            <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem;color:#e8a000">⚠️ THE EVERY-PLAYER RULE</div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6">By the end of the home & away season, every coach must have started <strong style="color:var(--text-primary)">every player on their squad at least once</strong>. Track your compliance below — unused players are flagged on your Pick tab.</div>
+        </div>
+        <div style="background:var(--bg-card);border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;border:1px solid var(--border)">
+            <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary)">\u{1F916} AUTOPICK</div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6">Optional opt-in. If you don't submit before lockout, autopick fills your team with your best available players. <strong style="color:#e74c3c">Costs $5</strong> each time it fires — owed to SLY, public on the Fund tab.</div>
+        </div>
+        <div style="background:var(--bg-card);border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;border:1px solid var(--border)">
+            <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary)">\u{1F501} TRADES & DRAFT</div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6">• Pre-season snake draft (22 rounds, 16 coaches).<br>• In-season trades: propose, recipient accepts/rejects — see Trades tab.</div>
+        </div>
+        <div style="background:var(--bg-card);border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;border:1px solid var(--border)">
+            <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.75rem;color:var(--text-primary)">\u{1F4CA} EVERY-PLAYER COMPLIANCE</div>
+            <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.75rem">Squad players who've been started at least once this season.</div>
+            <div id="rulesUsageList" style="display:flex;flex-direction:column;gap:0.5rem">
+                <div style="font-size:0.78rem;color:var(--text-secondary);text-align:center;padding:0.5rem 0">Loading…</div>
+            </div>
+        </div>
+    </div>`;
+    html = html.replace('<!-- NAV -->', RULES_PAGE + '\n    <!-- NAV -->');
+    // Patch 12: Pick tab — usage widget above slots
+    html = html.replace(
+      '<div class="pick-slots" id="pickSlotsContainer"></div>',
+      '<div id="pickUsageWidget" style="background:var(--bg-card);border-radius:12px;padding:0.7rem 0.9rem;margin-bottom:0.75rem;border:1px solid var(--border);font-size:0.78rem;color:var(--text-secondary);display:none"></div>\n        <div class="pick-slots" id="pickSlotsContainer"></div>'
+    );
+    // Patch 13: JS — loadRulesTab + loadPickUsageWidget. Inject before loadAutoPickStatus.
+    const RULES_JS = `async function loadRulesTab(){
+      try{
+        const data=await apiFetch('/api/usage-tracker');
+        const list=document.getElementById('rulesUsageList');
+        if(!list||!Array.isArray(data))return;
+        const meId=currentCoach&&currentCoach.id;
+        list.innerHTML='';
+        data.forEach((c,idx)=>{
+          const row=document.createElement('div');
+          const isMe=meId===c.coach_id;
+          row.style.cssText='background:var(--bg-input);border-radius:10px;padding:0.55rem 0.75rem;border:1px solid '+(isMe?'var(--accent)':'var(--border)')+';cursor:pointer';
+          const pct=c.compliance_pct;
+          const barColor=pct>=95?'var(--accent)':pct>=80?'#f5c518':'#e74c3c';
+          row.innerHTML='<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem">'
+            +'<span style="font-size:0.78rem;color:var(--text-secondary);width:1.2rem">#'+(idx+1)+'</span>'
+            +'<span style="font-size:0.95rem">'+(c.avatar_emoji||'\u{1F3C8}')+'</span>'
+            +'<span style="flex:1;font-size:0.82rem;font-weight:600;color:var(--text-primary)">'+c.coach_name+(isMe?' (you)':'')+'</span>'
+            +'<span style="font-size:0.78rem;font-weight:700;color:'+barColor+'">'+c.used_count+'/'+c.squad_size+' · '+pct+'%</span>'
+            +'</div>'
+            +'<div style="background:var(--bg-card);border-radius:6px;height:6px;overflow:hidden"><div style="height:100%;background:'+barColor+';width:'+pct+'%"></div></div>';
+          const detail=document.createElement('div');
+          detail.style.cssText='display:none;margin-top:0.5rem;font-size:0.74rem;color:var(--text-secondary);line-height:1.5';
+          if(c.unused_count===0){detail.innerHTML='<span style="color:var(--accent)">✅ All players used</span>';}
+          else{detail.innerHTML='<strong style="color:var(--text-primary)">Unused ('+c.unused_count+'):</strong> '+c.unused.map(p=>p.name).join(', ');}
+          row.appendChild(detail);
+          row.onclick=()=>{detail.style.display=detail.style.display==='none'?'block':'none';};
+          list.appendChild(row);
+        });
+      }catch(e){console.error('loadRulesTab',e);}
+    }
+    async function loadPickUsageWidget(){
+      try{
+        if(!currentCoach)return;
+        const w=document.getElementById('pickUsageWidget');
+        if(!w)return;
+        const data=await apiFetch('/api/usage-tracker?coach_id='+currentCoach.id);
+        const me=Array.isArray(data)?data[0]:null;
+        if(!me){w.style.display='none';return;}
+        w.style.display='block';
+        const pct=me.compliance_pct;
+        const color=pct>=95?'var(--accent)':pct>=80?'#f5c518':'#e74c3c';
+        let html='<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem"><span style="font-size:0.85rem">\u{1F4CB}</span><strong style="color:var(--text-primary);font-size:0.78rem">Every-player rule</strong><span style="margin-left:auto;font-weight:700;color:'+color+';font-size:0.78rem">'+me.used_count+'/'+me.squad_size+' · '+pct+'%</span></div>';
+        if(me.unused_count===0){html+='<div style="color:var(--accent);font-size:0.74rem">✅ You\\'ve started every player at least once.</div>';}
+        else{html+='<div style="font-size:0.74rem;line-height:1.5"><strong style="color:var(--text-primary)">Still need to start:</strong> '+me.unused.map(p=>p.name).join(', ')+'</div>';}
+        w.innerHTML=html;
+      }catch(e){console.error('loadPickUsageWidget',e);}
+    }
+    /* Hook switchPage so widget refreshes when entering Pick tab */
+    (function(){
+      if(window.__sly_switchPage_hooked)return;
+      const orig=window.switchPage;
+      if(typeof orig!=='function')return;
+      window.switchPage=function(pid,el){
+        const r=orig.apply(this,arguments);
+        try{ if(pid==='pagePickTeam')loadPickUsageWidget(); }catch(e){}
+        return r;
+      };
+      window.__sly_switchPage_hooked=true;
+    })();
+    async function loadAutoPickStatus() {`;
+    html = html.replace('async function loadAutoPickStatus() {', RULES_JS);
+
     // === End patches ===
 
     return new Response(html, {headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache, no-store, must-revalidate, max-age=0'}});
