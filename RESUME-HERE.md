@@ -77,6 +77,14 @@ Verify after every deploy: `GET /client/v4/accounts/{id}/workers/scripts/{name}/
 
 **Single source-of-truth for version:** top of sly-app-v2.js has `const VERSION = 'v5.X'`. Bump that on every deploy and the comment, /_version route, and Patch 15 all pick it up automatically.
 
+**Round types (synced from old site):**
+| Rounds | Type | Result rule |
+|---|---|---|
+| R0–R11, R17–R20 | H2H | Each coach vs fixture opponent — pts > oppPts → W |
+| R12–R16 | HIGH_SCORE | Rank all 16 by points; top 8 → W, bottom 8 → L (no fixtures) |
+
+`rounds.round_type` column added; `/api/rounds` returns it. Cron auto-handles both. R12-R16 will render with empty fixtures until Paddy designs the HIGH_SCORE display.
+
 **Scoring (verified against superleagueyeah.online):**
 | Slot | Formula |
 |---|---|

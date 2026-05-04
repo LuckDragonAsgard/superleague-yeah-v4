@@ -117,12 +117,30 @@ async function syncScores(env, forceRound, allowOverwriteComplete) {
       ts: new Date().toISOString()
     };
   }
+  // Determine results based on round_type:
+  //   H2H: each coach vs their fixture opponent — pts > oppPts -> W
+  //   HIGH_SCORE: rank all 16 by points; top 8 -> W, bottom 8 -> L (no opponent)
+  const isHighScore = (round.round_type || 'H2H') === 'HIGH_SCORE';
+  let highScoreRanked = null;
+  if (isHighScore && allComplete) {
+    highScoreRanked = Object.entries(totals)
+      .sort((a,b) => b[1] - a[1])
+      .map(([cid, pts], idx) => ({ cid: Number(cid), pts, rank: idx + 1, result: idx < 8 ? 'W' : 'L' }));
+  }
   const stmts = Object.entries(totals).map(([cid, pts]) => {
     const id = Number(cid);
-    const fix = fixMap[id];
-    const oppId = fix ? (fix.home_coach_id === id ? fix.away_coach_id : fix.home_coach_id) : null;
-    const oppPts = oppId ? (totals[oppId] || 0) : 0;
-    const result = allComplete && oppId ? (pts > oppPts ? 'W' : pts < oppPts ? 'L' : 'D') : null;
+    let oppId = null, oppPts = 0, result = null;
+    if (isHighScore) {
+      if (highScoreRanked) {
+        const me = highScoreRanked.find(x => x.cid === id);
+        result = me ? me.result : null;
+      }
+    } else {
+      const fix = fixMap[id];
+      oppId = fix ? (fix.home_coach_id === id ? fix.away_coach_id : fix.home_coach_id) : null;
+      oppPts = oppId ? (totals[oppId] || 0) : 0;
+      result = allComplete && oppId ? (pts > oppPts ? 'W' : pts < oppPts ? 'L' : 'D') : null;
+    }
     return db.prepare(
       `INSERT OR REPLACE INTO scores (coach_id,round_id,points,result,opponent_id,points_against,max_score) VALUES (?,?,?,?,?,?,0)`
     ).bind(id, roundId, pts, result, oppId, oppPts);
