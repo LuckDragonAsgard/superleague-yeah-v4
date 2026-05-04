@@ -1,4 +1,4 @@
-// sly-app v5.11 — standalone serve + Squiggle proxy + Fund tab patches
+// sly-app v5.12 — standalone serve + Squiggle proxy + Fund tab patches
 // Updated 2026-05-03: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -84,6 +84,28 @@ export default {
     html = html.replace(
       '</style>',
       'body.light-mode #pageChat .chat-msg-text{color:#1a1a2e!important}body.light-mode #pageChat .chat-msg-name{color:#1a1a2e!important}body.light-mode #pageChat .chat-msg-time{color:#666!important}</style>'
+    );
+    // Patch 7: Autopick toggle — $5 warning + updated description
+    html = html.replace(
+      'Automatically optimises your lineup before each round',
+      "Automatically picks your best available team if you haven't submitted before lockout — costs $5, you'll owe SLY."
+    );
+    html = html.replace(
+      "async function toggleAutoPick(enabled) {\n      const statusEl = document.getElementById('autoPickStatus');\n      statusEl.style.display = 'block';\n      statusEl.textContent = enabled ? 'Enabling auto-pick...' : 'Disabling auto-pick...';\n      if (!currentCoach) { statusEl.textContent = 'Log in first'; statusEl.style.color='#e74c3c'; return; }\n      try {\n        await apiFetch('/api/coaches/auto_pick', { method:'PATCH', body: JSON.stringify({ coach_id: currentCoach.id, enabled }) });\n        statusEl.textContent = enabled ? '✅ Auto-pick ON — your team will be optimised before each round (form-weighted, all 11 slots)' : 'Auto-pick OFF — set your lineup manually';\n        statusEl.style.color = enabled ? 'var(--accent)' : 'var(--text-secondary)';\n      } catch(e) {\n        statusEl.textContent = 'Failed to update: ' + e.message;\n        statusEl.style.color = '#e74c3c';\n      }\n    }",
+      'async function toggleAutoPick(enabled) {\n      const statusEl = document.getElementById(\'autoPickStatus\');\n      if (!currentCoach) { statusEl.style.display=\'block\'; statusEl.textContent=\'Log in first\'; statusEl.style.color=\'#e74c3c\'; return; }\n      if (enabled) {\n        const ok = confirm("Auto pick will select your best available team if you haven\'t submitted before lockout.\\n\\nYou\'ll owe SLY $5 \\u2014 this will show on the Autopick Tab for everyone to see. Proceed?");\n        if (!ok) { const t=document.getElementById(\'autoPickToggle\'); if(t) t.checked=false; return; }\n      }\n      statusEl.style.display=\'block\';\n      statusEl.textContent = enabled ? \'Enabling auto-pick...\' : \'Disabling auto-pick...\';\n      try {\n        await apiFetch(\'/api/coaches/auto_pick\', { method:\'PATCH\', body: JSON.stringify({ coach_id: currentCoach.id, enabled }) });\n        statusEl.textContent = enabled ? "✅ Auto-pick ON \\u2014 you\'ll owe SLY $5 if this fires." : \'Auto-pick OFF\';\n        statusEl.style.color = enabled ? \'var(--accent)\' : \'var(--text-secondary)\';\n      } catch(e) {\n        statusEl.textContent = \'Failed to update: \' + e.message;\n        statusEl.style.color = \'#e74c3c\';\n      }\n    }'
+    );
+    // Patch 8: Autopick Tab section in Fund tab + JS functions
+    html = html.replace(
+      '<div id="fundPayStatus" style="margin-top:0.75rem;font-size:0.78rem;color:var(--accent)"></div>\n        </div>\n        <div style="background:linear-gradient(135deg,rgba(232,160,0,0.12),rgba(245,197,24,0.06));',
+      '<div id="fundPayStatus" style="margin-top:0.75rem;font-size:0.78rem;color:var(--accent)"></div>\n        </div>\n        <div style="background:var(--bg-card);border-radius:16px;padding:1.25rem;margin-bottom:1.25rem;border:1px solid var(--border)">\n            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem"><span style="font-size:1rem">🤖</span><span style="font-size:0.85rem;font-weight:700;color:var(--text-primary)">AUTOPICK TAB</span></div>\n            <p style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.75rem">Coaches who\'ve enabled autopick. $5 owed to SLY each time it fires.</p>\n            <div id="autopickTabGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem"></div>\n            <div id="autopickTabStatus" style="margin-top:0.5rem;font-size:0.78rem;color:var(--accent)"></div>\n        </div>\n        <div style="background:linear-gradient(135deg,rgba(232,160,0,0.12),rgba(245,197,24,0.06)); '
+    );
+    html = html.replace(
+      "        renderFundGoldGrid();\n        } catch(e) { console.error('loadSlushFund error', ",
+      "        renderFundGoldGrid();\n        loadAutopickTab();\n        } catch(e) { console.error('loadSlushFund error', "
+    );
+    html = html.replace(
+      'async function loadAutoPickStatus() {',
+      'async function loadAutopickTab(){\n      try{\n        const data=await apiFetch(\'/api/autopick-status\');\n        const grid=document.getElementById(\'autopickTabGrid\');\n        if(!grid)return;\n        const isAdm=currentCoach&&currentCoach.id===1;\n        const list=Array.isArray(data)?data:[];\n        if(!list.length){\n          grid.innerHTML=\'<div style="font-size:0.8rem;color:var(--text-secondary);text-align:center;padding:0.75rem 0;grid-column:1/-1">No coaches have enabled autopick yet</div>\';\n          return;\n        }\n        grid.innerHTML=\'\';\n        list.forEach(c=>{\n          const card=document.createElement(\'div\');\n          card.style.cssText=\'display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.65rem;border-radius:10px;border:2px solid \'+(c.autopick_paid?\'var(--accent)\':\'#e74c3c\')+\';background:var(--bg-input);\'+(isAdm?\'cursor:pointer\':\'\');\n          card.innerHTML=\'<span style="font-size:1rem">\'+(c.autopick_paid?\'✅\':\'⏳\')+\'</span>\'\n            +\'<div style="flex:1;min-width:0">\'\n            +\'<div style="font-size:0.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">\'+c.name+\'</div>\'\n            +\'<div style="font-size:0.68rem;color:\'+(c.autopick_paid?\'var(--accent)\':\'#e74c3c\')+\'">\'+(c.autopick_paid?\'Paid $5\':\'Owes $5\')+\'</div>\'\n            +\'</div>\';\n          if(isAdm)card.onclick=()=>toggleAutopickPaid(c.coach_id,!c.autopick_paid,c.name);\n          grid.appendChild(card);\n        });\n      }catch(e){console.error(\'loadAutopickTab\',e);}\n    }\n    async function toggleAutopickPaid(coachId,newPaid,name){\n      const s=document.getElementById(\'autopickTabStatus\');\n      if(s)s.textContent=\'Updating \'+name+\'...\';\n      try{\n        await apiFetch(\'/api/payments/\'+coachId,{method:\'PATCH\',body:JSON.stringify({autopick_paid:newPaid?1:0})});\n        await loadAutopickTab();\n        if(s)s.textContent=\'\';\n      }catch(e){if(s)s.textContent=\'Error saving\';}\n    }\n    async function loadAutoPickStatus() {'
     );
     // === End patches ===
 

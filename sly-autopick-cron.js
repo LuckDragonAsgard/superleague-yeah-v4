@@ -16,10 +16,10 @@ async function runAutoPicks() {
   const targets = rounds.filter(r => r.lock_time && new Date(r.lock_time).getTime() > now && new Date(r.lock_time).getTime() < now + 30*60*60*1000 && !r.is_complete);
   if (!targets.length) return { ok: true, message: 'no rounds locking within 30h', targets: 0 };
 
-  // Get all coaches with auto_pick_enabled=1
-  const coaches = await (await fetch(API + '/api/coaches')).json();
-  const optedIn = coaches.filter(c => c.auto_pick_enabled === 1 || c.auto_pick_enabled === true);
-  if (!optedIn.length) return { ok: true, message: 'no coaches opted in', targets: targets.length, opted_in: 0 };
+  // Get all coaches with auto_pick_enabled=1 AND autopick_paid=1
+  const autopickStatus = await (await fetch(API + '/api/autopick-status')).json();
+  const optedIn = (Array.isArray(autopickStatus) ? autopickStatus : []).filter(c => c.auto_pick_enabled && c.autopick_paid);
+  if (!optedIn.length) return { ok: true, message: 'no coaches opted in + paid', targets: targets.length, opted_in: 0 };
 
   const results = [];
   for (const round of targets) {
