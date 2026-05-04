@@ -27,13 +27,18 @@ CRONS = {
     "sly-autopick-cron": "*/15 * * * *",
     "sly-notify-cron": None,  # Thursday reminders, multiple schedules
 }
+# Auth probes: send EMPTY/MALFORMED bodies so the request never writes to D1
+# regardless of whether auth gates are missing. We're checking the *response*:
+#  - 401/403 with API JSON error → gated (good)
+#  - 200 → no gate (bad — auth hole)
+#  - 400 → no gate, request reached body-validation layer (also bad — auth hole)
 MUTATION_ENDPOINTS = [
-    ("POST", "/api/_admin/replace", '{"table":"injury_list","rows":[{"player_id":"_check","injury":"x","estimated_return":""}]}'),
-    ("POST", "/api/picks/_bulk",   '{"rows":[{"round_id":1,"coach_id":1,"player_id":"_check","slot":"D1"}]}'),
-    ("POST", "/api/scores",        '[{"coach_id":99999,"round_id":99999,"points":1}]'),
-    ("POST", "/api/stats",         '[{"player_id":"_check","round_id":99999,"fantasy_pts":1}]'),
-    ("POST", "/api/messages",      '{"coach_id":1,"content":"_sly_checks_probe"}'),
-    ("POST", "/api/picks",         '{"round_number":99,"coach_id":1,"picks":[]}'),
+    ("POST", "/api/_admin/replace", '{}'),
+    ("POST", "/api/picks/_bulk",   '{}'),
+    ("POST", "/api/scores",        '[]'),
+    ("POST", "/api/stats",         '[]'),
+    ("POST", "/api/messages",      '{}'),
+    ("POST", "/api/picks",         '{}'),
 ]
 
 results = []
@@ -122,10 +127,12 @@ def check_auth_gates():
         except Exception: pass
         if code in (401, 403) and api_said_auth:
             ok(f"auth: {method} {path} → {code} gated by API")
+        elif code in (400,):
+            fail(f"auth: {method} {path} → 400 (request reached body-validation w/o auth gate — HOLE): {body_resp[:60]}")
         elif code == 200:
             fail(f"auth: {method} {path} → 200 UNAUTHENTICATED (HOLE)")
         elif code in (401, 403):
-            warn(f"auth: {method} {path} → {code} but body wasn't auth-error JSON: {body_resp[:60]}")
+            warn(f"auth: {method} {path} → {code} non-JSON body: {body_resp[:60]}")
         else:
             warn(f"auth: {method} {path} → {code} (inconclusive): {body_resp[:80]}")
 
