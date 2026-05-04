@@ -184,12 +184,47 @@ def check_data_health():
     else: ok(f"rounds: {len(rs)} rows")
     s, b = http_get(f"{API}/api/scores"); ok(f"scores: {len(json.loads(b))} rows")
 
+
+# Known truth (scraped from old site superleagueyeah.online 2026-05-04).
+# If D1 ever drifts from these for a completed historical round, something
+# overwrote the backfill — likely the cron forgot the is_complete guard.
+HISTORICAL_TRUTH = {
+    8: [("Josh",187),("Cammy",202),("Tanka",110.5),("A Smith",173),("Dane",185),("Andy",166.5),
+        ("Flags",170),("Age",159),("Libba",167.5),("Isaac",155),("Fraser",176),("MDT",106),
+        ("Jack",167.5),("Cram",150.5),("Joe",131),("Georgrick",193)],
+    7: [("Josh",259),("Tanka",182),("Cammy",125.5),("Dane",165),("Fraser",119.5),("A Smith",222),
+        ("Jack",176.5),("Age",94),("Flags",154),("Isaac",219),("Cram",154.5),("Andy",177.5),
+        ("Libba",191),("MDT",185),("Joe",124),("Georgrick",153)],
+}
+
+def check_score_drift():
+    if not HISTORICAL_TRUTH: return
+    for round_num, expected in HISTORICAL_TRUTH.items():
+        try:
+            s, b = http_get(f"{API}/api/scores?round={round_num}")
+            d1 = {r["coach_id"]: r for r in json.loads(b)}
+            # need name lookup
+            s2, b2 = http_get(f"{API}/api/coaches")
+            id_by_name = {c["name"]: c["id"] for c in json.loads(b2)}
+            for name, expected_pts in expected:
+                cid = id_by_name.get(name)
+                if cid is None: warn(f"score drift R{round_num}: coach '{name}' not found"); continue
+                row = d1.get(cid)
+                if not row: fail(f"score drift R{round_num}: no score row for {name}"); continue
+                actual = float(row.get("points", -1))
+                if abs(actual - expected_pts) > 0.01:
+                    fail(f"score drift R{round_num}: {name} D1={actual} truth={expected_pts}")
+        except Exception as e: fail(f"score_drift R{round_num}: {e}")
+    if not [r for r in results if r[0] == "FAIL" and "score drift" in r[1]]:
+        ok(f"score drift: R{','.join(str(r) for r in HISTORICAL_TRUTH)} match scraped truth")
+
+
 # ---- Run all ----
 def main():
     print("\n=== SLY post-deploy checks ===\n")
     for fn in [check_version_coherence, check_bindings, check_crons,
                check_auth_gates, check_patch_effects, check_jumper_health,
-               check_data_health]:
+               check_data_health, check_score_drift]:
         try: fn()
         except Exception as e: fail(f"{fn.__name__}: {e}")
     fails = sum(1 for s,_ in results if s=="❌")

@@ -1,110 +1,122 @@
-// sly-score-cron.js — syncs AFL Fantasy scores every minute, auto-completes round when all games finish
+// sly-score-cron.js v2 — position-specialist scoring from Supabase match_player_stats
+// Formula (per slot):
+//   SG: 10*goals + behinds          (super-goalkicker)
+//   G1, G2: 6*goals + behinds        (goalkickers)
+//   R: 0.5*hitouts + 0.5*disposals + marks   (ruck)
+//   M: 4*marks                       (marker)
+//   T: 4*tackles                     (tackler)
+//   D1, D2: disposals                (defenders)
+// Verified against old site (superleagueyeah.online) for R1-R8 — exact match.
+// Documented: https://github.com/PaddyGallivan/asgard-source/blob/main/docs/ENGINEERING-RULES.md
+
+const SB = 'https://hzkodmxrranessgbjjjl.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6a29kbXhycmFuZXNzZ2JqampsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyMjE5ODYsImV4cCI6MjA4Njc5Nzk4Nn0.7Tiy5bLjN-9Iy1D-Ihb_TPrPNQZWhrzWHjMDy6rgUNI';
+
+const SLOT_FORMULA = {
+  SG: s => 10 * (s.goals||0) + (s.behinds||0),
+  G1: s => 6 * (s.goals||0) + (s.behinds||0),
+  G2: s => 6 * (s.goals||0) + (s.behinds||0),
+  R:  s => 0.5 * (s.hitouts||0) + 0.5 * (s.disposals||0) + (s.marks||0),
+  M:  s => 4 * (s.marks||0),
+  T:  s => 4 * (s.tackles||0),
+  D1: s => (s.disposals||0),
+  D2: s => (s.disposals||0),
+};
+const STARTERS = new Set(Object.keys(SLOT_FORMULA));
 
 export default {
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(syncScores(env));
-  },
+  async scheduled(event, env, ctx) { ctx.waitUntil(syncScores(env)); },
   async fetch(req, env) {
-    const result = await syncScores(env);
-    return new Response(JSON.stringify(result, null, 2), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-    });
+    const u = new URL(req.url);
+    const force = +u.searchParams.get('force_round') || null;
+    const allowOverwrite = u.searchParams.get('allow_overwrite_complete') === '1';
+    return new Response(JSON.stringify(await syncScores(env, force, allowOverwrite), null, 2),
+      { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
 };
 
-async function syncScores(env) {
+async function fetchSupabaseStats(roundNumber) {
+  // Paginate match_player_stats for the given round_number
+  const all = [];
+  let offset = 0;
+  while (true) {
+    const r = await fetch(`${SB}/rest/v1/match_player_stats?round_number=eq.${roundNumber}&limit=1000&offset=${offset}`,
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+    if (!r.ok) throw new Error(`Supabase ${r.status}`);
+    const page = await r.json();
+    if (!page.length) break;
+    all.push(...page);
+    if (page.length < 1000) break;
+    offset += 1000;
+  }
+  return all;
+}
+
+async function syncScores(env, forceRound, allowOverwriteComplete) {
   const db = env.DB;
 
-  // 1. Find live round (locked, not complete)
-  const { results: rounds } = await db.prepare(
-    `SELECT * FROM rounds WHERE is_complete=0 AND lock_time IS NOT NULL
-     AND lock_time < datetime('now') ORDER BY round_number DESC LIMIT 1`
-  ).all();
-  if (!rounds.length) return { ok: true, message: 'no live round', ts: new Date().toISOString() };
-
-  const round = rounds[0];
+  let round;
+  if (forceRound) {
+    round = await db.prepare('SELECT * FROM rounds WHERE round_number=?').bind(forceRound).first();
+    if (!round) return { ok: false, error: `round ${forceRound} not found` };
+  } else {
+    const { results } = await db.prepare(
+      `SELECT * FROM rounds WHERE is_complete=0 AND lock_time IS NOT NULL
+       AND lock_time < datetime('now') ORDER BY round_number DESC LIMIT 1`).all();
+    if (!results.length) return { ok: true, message: 'no live round', ts: new Date().toISOString() };
+    round = results[0];
+  }
   const roundId = round.id;
   const roundNum = round.round_number;
 
-  // 2. Check Squiggle — are all AFL games this round complete?
-  const squiggleRes = await fetch(
-    `https://api.squiggle.com.au/?q=games;year=2026;round=${roundNum}`,
-    { headers: { 'User-Agent': 'SLY-LiveScore/1.0 (paddy@luckdragon.io)' } }
-  );
-  const squiggleData = await squiggleRes.json();
-  const games = squiggleData?.games || [];
-  const allComplete = games.length > 0 && games.every(g => g.complete === 100);
-  const incompleteGames = games.filter(g => g.complete < 100).map(g => `${g.hteam} vs ${g.ateam} (${g.complete}%)`);
-
-  // 3. Fetch AFL Fantasy scores (read body once as ArrayBuffer)
-  const aflRes = await fetch('https://fantasy.afl.com.au/data/afl/players.json', {
-    headers: { 'User-Agent': 'SLY-LiveScore/1.0 (paddy@luckdragon.io)', 'Accept-Encoding': 'identity' }
-  });
-  if (!aflRes.ok) return { ok: false, error: `AFL Fantasy ${aflRes.status}`, ts: new Date().toISOString() };
-
-  const rawBytes = new Uint8Array(await aflRes.arrayBuffer());
-  let data;
+  // Squiggle — only for auto-complete check
+  let allComplete = false; let incompleteGames = [];
   try {
-    data = JSON.parse(new TextDecoder().decode(rawBytes));
-  } catch {
-    try {
-      const ds = new DecompressionStream('gzip');
-      const writer = ds.writable.getWriter();
-      writer.write(rawBytes); writer.close();
-      let out = ''; const reader = ds.readable.getReader(); const dec = new TextDecoder();
-      while (true) { const { done, value } = await reader.read(); if (done) break; out += dec.decode(value, { stream: true }); }
-      data = JSON.parse(out);
-    } catch (e) {
-      return { ok: false, error: 'parse failed: ' + String(e), ts: new Date().toISOString() };
-    }
-  }
+    const sq = await fetch(`https://api.squiggle.com.au/?q=games;year=2026;round=${roundNum}`,
+      { headers: { 'User-Agent': 'SLY-LiveScore/1.0 (paddy@luckdragon.io)' } });
+    const games = (await sq.json())?.games || [];
+    allComplete = games.length > 0 && games.every(g => g.complete === 100);
+    incompleteGames = games.filter(g => g.complete < 100).map(g => `${g.hteam} vs ${g.ateam} (${g.complete}%)`);
+  } catch (e) { /* squiggle optional */ }
 
-  // 4. Name → score map
-  const scoreMap = {};
-  for (const p of data) {
-    const pts = p?.stats?.scores?.[String(roundNum)];
-    if (pts != null) {
-      const name = ((p.first_name || '') + ' ' + (p.last_name || '')).trim();
-      if (name) scoreMap[name] = pts;
-    }
-  }
+  // Pull match stats from Supabase (publicly readable)
+  let stats;
+  try { stats = await fetchSupabaseStats(roundNum); }
+  catch (e) { return { ok: false, error: 'supabase fetch failed: ' + e.message, ts: new Date().toISOString() }; }
+  const statsByPid = {};
+  for (const s of stats) statsByPid[s.player_id] = s;
 
-  // 5. Load players, picks, fixtures
-  const [{ results: players }, { results: picks }, { results: fixtures }] = await Promise.all([
-    db.prepare('SELECT id, name FROM players').all(),
-    db.prepare('SELECT coach_id, player_id, slot FROM round_picks WHERE round_id=?').bind(roundId).all(),
-    db.prepare('SELECT * FROM sly_fixtures WHERE round_id=?').bind(roundId).all()
+  // Load picks + fixtures for this round
+  const [{ results: picks }, { results: fixtures }] = await Promise.all([
+    db.prepare('SELECT coach_id, slot, player_id FROM round_picks WHERE round_id=?').bind(roundId).all(),
+    db.prepare('SELECT * FROM sly_fixtures WHERE round_id=?').bind(roundId).all(),
   ]);
 
-  // 6. Map player_id → pts, build stat rows
-  const playerPtsMap = {};
-  const statRows = [];
-  for (const pl of players) {
-    const pts = scoreMap[pl.name];
-    if (pts != null) { playerPtsMap[pl.id] = pts; statRows.push([pl.id, pts]); }
-  }
-  if (!statRows.length) return { ok: false, error: 'no scores matched', ts: new Date().toISOString() };
-
-  // 7. Upsert player_round_stats
-  for (let i = 0; i < statRows.length; i += 50) {
-    await db.batch(statRows.slice(i, i + 50).map(([pid, pts]) =>
-      db.prepare('INSERT OR REPLACE INTO player_round_stats (player_id, round_id, fantasy_pts) VALUES (?,?,?)')
-        .bind(pid, roundId, pts)
-    ));
-  }
-
-  // 8. Tally coach scores
-  const SCORING = new Set(['SG','G1','G2','R','M','T','D1','D2']);
+  // Tally coach scores via slot formula
   const totals = {};
   for (const pick of picks) {
-    if (!SCORING.has(pick.slot)) continue;
-    totals[pick.coach_id] = (totals[pick.coach_id] || 0) + (playerPtsMap[pick.player_id] || 0);
+    if (!STARTERS.has(pick.slot)) continue;  // skip emergencies
+    const s = statsByPid[pick.player_id];
+    const pts = s ? SLOT_FORMULA[pick.slot](s) : 0;
+    totals[pick.coach_id] = (totals[pick.coach_id] || 0) + pts;
   }
 
-  // 9. Upsert scores with W/L/D
+  // Build score rows (preserve W/L/D from fixture matchup)
   const fixMap = {};
   for (const f of fixtures) { fixMap[f.home_coach_id] = f; fixMap[f.away_coach_id] = f; }
 
+  // Safety: refuse to overwrite completed rounds unless explicitly allowed.
+  // R1-R8 were backfilled from old site (superleagueyeah.online) because D1 picks
+  // are stale (rolled-over from migration, not actual lockout-time picks).
+  // Cron must NEVER touch them by default.
+  if (round.is_complete && !allowOverwriteComplete) {
+    return {
+      ok: true, dry_run: true,
+      reason: 'Round is_complete=1, refusing to write. Pass &allow_overwrite_complete=1 to override.',
+      round: roundNum, computed_totals: totals,
+      ts: new Date().toISOString()
+    };
+  }
   const stmts = Object.entries(totals).map(([cid, pts]) => {
     const id = Number(cid);
     const fix = fixMap[id];
@@ -117,9 +129,22 @@ async function syncScores(env) {
   });
   if (stmts.length) await db.batch(stmts);
 
-  // 10. Auto-complete round if all AFL games done
+  // Persist player_round_stats too (audit trail; recompute-able)
+  if (stats.length) {
+    const statBatches = [];
+    for (let i = 0; i < stats.length; i += 50) {
+      statBatches.push(db.batch(stats.slice(i, i + 50).map(s =>
+        db.prepare('INSERT OR REPLACE INTO player_round_stats (player_id, round_id, fantasy_pts, goals, behinds, disposals, marks, tackles, hitouts) VALUES (?,?,?,?,?,?,?,?,?)')
+          .bind(s.player_id, roundId,
+                computeFantasyPts(s),
+                s.goals||0, s.behinds||0, s.disposals||0, s.marks||0, s.tackles||0, s.hitouts||0)
+      )));
+    }
+    await Promise.all(statBatches);
+  }
+
   let roundCompleted = false;
-  if (allComplete) {
+  if (allComplete && !forceRound) {
     await db.prepare('UPDATE rounds SET is_complete=1 WHERE id=?').bind(roundId).run();
     roundCompleted = true;
   }
@@ -127,12 +152,18 @@ async function syncScores(env) {
   return {
     ok: true,
     round: roundNum,
-    matched: statRows.length,
-    coaches: stmts.length,
+    matched_stat_rows: stats.length,
+    coaches_scored: stmts.length,
     all_games_complete: allComplete,
     incomplete_games: incompleteGames,
     round_marked_complete: roundCompleted,
     top: Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([id,pts])=>({id,pts})),
     ts: new Date().toISOString()
   };
+}
+
+// Approximate AFL Fantasy formula for backwards-compat audit (kicks/handballs not exposed; use disposals*2.5 as proxy)
+function computeFantasyPts(s) {
+  const D = s.disposals||0, M = s.marks||0, T = s.tackles||0, H = s.hitouts||0, G = s.goals||0, B = s.behinds||0;
+  return Math.round(D * 2.5 + M * 3 + T * 4 + H * 1 + G * 6 + B);
 }
