@@ -1,4 +1,4 @@
-// sly-app v5.17 — standalone serve + Squiggle proxy + Fund tab patches
+// sly-app v5.19 — standalone serve + Squiggle proxy + Fund tab patches
 // Updated 2026-05-04: v5.14 + Rules tab + every-player tracker; v5.13: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -8,7 +8,7 @@ export default {
     if (p.startsWith('/api/') && req.method === 'OPTIONS') return new Response(null, {status:204, headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,PATCH,PUT,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization'}});
 
     if (p === '/_version') {
-      return new Response(JSON.stringify({v:'v5.17',t:Date.now()}), {headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-cache, no-store, must-revalidate'}});
+      return new Response(JSON.stringify({v:'v5.19',t:Date.now()}), {headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Cache-Control':'no-cache, no-store, must-revalidate'}});
     }
     if (p === '/api/login' && req.method === 'POST') {
       try {
@@ -240,7 +240,23 @@ export default {
     // and reloads if a new sly-app version is live, so users don't see stale UI after a deploy.
     html = html.replace(
       '</head>',
-      '<meta name="sly-app-version" content="v5.17">\n<script>(function(){var V="v5.16";var notified=false;function check(){fetch("/_version?n="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(d){if(d&&d.v&&d.v!==V&&!notified){notified=true;console.log("[sly-app] new version",d.v,"available, reloading...");setTimeout(function(){location.reload(true)},500)}}).catch(function(){})}setInterval(check,90000);setTimeout(check,5000);})();</script></head>'
+      '<meta name="sly-app-version" content="v5.19">\n<script>(function(){var V="v5.16";var notified=false;function check(){fetch("/_version?n="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(d){if(d&&d.v&&d.v!==V&&!notified){notified=true;console.log("[sly-app] new version",d.v,"available, reloading...");setTimeout(function(){location.reload(true)},500)}}).catch(function(){})}setInterval(check,90000);setTimeout(check,5000);})();</script></head>'
+    );
+    // Patch 16: Add crossorigin="anonymous" to coach-logo-img imgs.
+    // Without this, the canvas in SLY-FIX v6 is tainted (browser cache reuses no-cors response),
+    // so the white-strip flood-fill silently fails and white rectangles persist.
+    html = html.replace(
+      '`<img src="${coach.logo_url}" class="coach-logo-img"',
+      '`<img src="${coach.logo_url}" crossorigin="anonymous" class="coach-logo-img"'
+    );
+    // Patch 17: SLY-FIX v6's white-jersey guard bails on logos with >45% white pixels.
+    // Coach-uploaded logos commonly sit on a white background that's 60-90% of the image,
+    // so the guard refused to strip them and white rectangles persisted.
+    // The flood-fill that follows the guard is corner-only and never touches interior content,
+    // so it's safe to run unconditionally. Replace the guard with a near-100% threshold.
+    html = html.replace(
+      "if(wCnt/(px.length/4)>0.45){ resolve(null); return; }",
+      "if(wCnt/(px.length/4)>0.985){ resolve(null); return; }"
     );
     // === End patches ===
 
