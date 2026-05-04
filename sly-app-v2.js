@@ -1,4 +1,4 @@
-// sly-app v5.12 — standalone serve + Squiggle proxy + Fund tab patches
+// sly-app v5.13 — standalone serve + Squiggle proxy + Fund tab patches
 // Updated 2026-05-03: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -106,6 +106,19 @@ export default {
     html = html.replace(
       'async function loadAutoPickStatus() {',
       'async function loadAutopickTab(){\n      try{\n        const data=await apiFetch(\'/api/autopick-status\');\n        const grid=document.getElementById(\'autopickTabGrid\');\n        if(!grid)return;\n        const isAdm=currentCoach&&currentCoach.id===1;\n        const list=Array.isArray(data)?data:[];\n        if(!list.length){\n          grid.innerHTML=\'<div style="font-size:0.8rem;color:var(--text-secondary);text-align:center;padding:0.75rem 0;grid-column:1/-1">No coaches have enabled autopick yet</div>\';\n          return;\n        }\n        grid.innerHTML=\'\';\n        list.forEach(c=>{\n          const card=document.createElement(\'div\');\n          card.style.cssText=\'display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.65rem;border-radius:10px;border:2px solid \'+(c.autopick_paid?\'var(--accent)\':\'#e74c3c\')+\';background:var(--bg-input);\'+(isAdm?\'cursor:pointer\':\'\');\n          card.innerHTML=\'<span style="font-size:1rem">\'+(c.autopick_paid?\'✅\':\'⏳\')+\'</span>\'\n            +\'<div style="flex:1;min-width:0">\'\n            +\'<div style="font-size:0.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">\'+c.name+\'</div>\'\n            +\'<div style="font-size:0.68rem;color:\'+(c.autopick_paid?\'var(--accent)\':\'#e74c3c\')+\'">\'+(c.autopick_paid?\'Paid $5\':\'Owes $5\')+\'</div>\'\n            +\'</div>\';\n          if(isAdm)card.onclick=()=>toggleAutopickPaid(c.coach_id,!c.autopick_paid,c.name);\n          grid.appendChild(card);\n        });\n      }catch(e){console.error(\'loadAutopickTab\',e);}\n    }\n    async function toggleAutopickPaid(coachId,newPaid,name){\n      const s=document.getElementById(\'autopickTabStatus\');\n      if(s)s.textContent=\'Updating \'+name+\'...\';\n      try{\n        await apiFetch(\'/api/payments/\'+coachId,{method:\'PATCH\',body:JSON.stringify({autopick_paid:newPaid?1:0})});\n        await loadAutopickTab();\n        if(s)s.textContent=\'\';\n      }catch(e){if(s)s.textContent=\'Error saving\';}\n    }\n    async function loadAutoPickStatus() {'
+    );
+    // Patch 9: Draft Board blurb + friendlier encrypted chat UX
+    html = html.replace(
+      '<div id="draftPanelHistory">\n      <div class="draft-filter" id="draftFilter"></div>\n      <div id="draftBoard"></div>\n    </div>',
+      '<div id="draftPanelHistory">\n      <div style="background:var(--bg-card);border-radius:12px;padding:0.85rem 1rem;margin-bottom:0.85rem;border:1px solid var(--border);font-size:0.8rem;color:var(--text-secondary);line-height:1.6"><strong style="color:var(--text-primary)">📋 Pre-season draft board</strong><br>Snake draft completed before Round 1 — 22 rounds, 16 coaches, 352 picks total. Round 1 went picks 1–16, Round 2 reversed (16–1), alternating each round. Your picks are <span style="color:var(--accent);font-weight:600">highlighted green</span>. Tap <strong>🔍 Player Pool</strong> to browse stats, or <strong>🎯 Live Draft</strong> to run a new draft.</div>\n      <div class="draft-filter" id="draftFilter"></div>\n      <div id="draftBoard"></div>\n    </div>'
+    );
+    html = html.replace(
+      "return '🔒 (encrypted — not for you)';",
+      "return '🔒 Private message';"
+    );
+    html = html.replace(
+      '<input type="checkbox" id="ncGroupEnc"> 🔒 End-to-end encrypted',
+      '<input type="checkbox" id="ncGroupEnc"> 🔒 Make this chat private'
     );
     // === End patches ===
 
