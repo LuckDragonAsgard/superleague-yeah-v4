@@ -33,12 +33,17 @@ CRONS = {
 #  - 200 → no gate (bad — auth hole)
 #  - 400 → no gate, request reached body-validation layer (also bad — auth hole)
 MUTATION_ENDPOINTS = [
-    ("POST", "/api/_admin/replace", '{}'),
-    ("POST", "/api/picks/_bulk",   '{}'),
-    ("POST", "/api/scores",        '[]'),
-    ("POST", "/api/stats",         '[]'),
-    ("POST", "/api/messages",      '{}'),
-    ("POST", "/api/picks",         '{}'),
+    ("POST",  "/api/_admin/replace", '{}'),
+    ("POST",  "/api/picks/_bulk",    '{}'),
+    ("POST",  "/api/scores",         '[]'),
+    ("POST",  "/api/stats",          '[]'),
+    ("POST",  "/api/messages",       '{}'),
+    ("POST",  "/api/picks",          '{}'),
+    ("PATCH", "/api/coaches/1",      '{"team_name":"_audit"}'),
+    ("PATCH", "/api/players/00000000-0000-0000-0000-000000000000", '{"name":"_audit"}'),
+    ("PATCH", "/api/payments/1",     '{"paid":1}'),
+    ("PATCH", "/api/trades/1",       '{"status":"_audit"}'),
+    ("PATCH", "/api/sly-fixtures/1", '{"match_name":"_audit"}'),
 ]
 
 results = []
