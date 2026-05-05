@@ -1,5 +1,5 @@
 // sly-app v5.21 — standalone serve + Squiggle proxy + Fund tab patches
-const VERSION = 'v5.23';
+const VERSION = 'v5.24';
 // Updated 2026-05-04: v5.14 + Rules tab + every-player tracker; v5.13: v5.8 fix Home status label for 'open' rounds; v5.7 fix round selection
 export default {
   async fetch(req, env) {
@@ -276,6 +276,13 @@ export default {
     html = html.replace(
       "localStorage.removeItem('sly_coach_id');",
       "localStorage.removeItem('sly_coach_id'); try { sessionStorage.removeItem('sly_coach_pin'); } catch(e){}"
+    );
+    // Patch 19: Render HS rounds (R12-R16) and Final rounds (R21-R24) properly.
+    // Default "No fixtures set" is replaced with a type-aware banner — HIGH SCORE
+    // explainer for HS, "Bracket TBD until R20" for Finals.
+    html = html.replace(
+      'if(!fixtures.length){html+=\'<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No fixtures set</div>\';container.innerHTML=html;return;}',
+      'if(!fixtures.length){const rt=round.round_type||\'H2H\';if(rt===\'HS\'){html+=\'<div style="background:linear-gradient(135deg,rgba(232,160,0,0.15),rgba(245,197,24,0.08));border-radius:14px;padding:1rem 1.25rem;margin-bottom:0.75rem;border:1px solid rgba(232,160,0,0.4)"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem"><span style="font-size:1.1rem">🏆</span><span style="font-size:0.85rem;font-weight:800;color:#e8a000">HIGH SCORE ROUND</span></div><div style="font-size:0.78rem;color:var(--text-secondary);line-height:1.5">No head-to-head matchups. All 16 coaches compete — top 8 by points earn a W, bottom 8 take an L.</div></div>\';html+=\'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">\';allCoaches.forEach(c=>{html+=\'<div style="background:var(--card);border-radius:10px;padding:0.5rem 0.75rem;border:1px solid var(--border);display:flex;align-items:center;gap:0.5rem"><span style="font-size:0.95rem">\'+getJerseyHTML(c,28)+\'</span><span style="font-size:0.78rem;font-weight:600">\'+c.name+\'</span></div>\';});html+=\'</div>\';}else if(rt===\'Final\'){html+=\'<div style="background:linear-gradient(135deg,rgba(220,38,38,0.12),rgba(220,38,38,0.05));border-radius:14px;padding:1rem 1.25rem;margin-bottom:0.75rem;border:1px solid rgba(220,38,38,0.35)"><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem"><span style="font-size:1.1rem">🏆</span><span style="font-size:0.85rem;font-weight:800;color:#dc2626">FINAL — BRACKET TBD</span></div><div style="font-size:0.78rem;color:var(--text-secondary);line-height:1.5">Matchups are determined after the regular season ladder is locked (R20). Top 8 advance; auto-generated week-by-week as results come in.</div></div>\';}else{html+=\'<div style="text-align:center;padding:2rem;color:var(--text-secondary)">No fixtures set</div>\';}container.innerHTML=html;return;}'
     );
     // === End patches ===
 
