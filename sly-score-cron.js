@@ -24,8 +24,25 @@ const SLOT_FORMULA = {
 };
 const STARTERS = new Set(Object.keys(SLOT_FORMULA));
 
+// Heartbeat helper — POST /api/cron/heartbeat with admin token
+async function heartbeat(env, status, message) {
+  try {
+    const tok = env.MIGRATION_TOKEN || 'SLY_MIGRATION_2026_04_25';
+    await fetch('https://sly-api.luckdragon.io/api/cron/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ cron_name: 'sly-score-cron', status, message })
+    });
+  } catch (e) {}
+}
+
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(syncScores(env)); },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil((async () => {
+      try { const r = await syncScores(env); await heartbeat(env, 'ok', JSON.stringify(r).slice(0, 200)); }
+      catch (e) { await heartbeat(env, 'err', String(e).slice(0, 200)); throw e; }
+    })());
+  },
   async fetch(req, env) {
     const u = new URL(req.url);
     const force = +u.searchParams.get('force_round') || null;
