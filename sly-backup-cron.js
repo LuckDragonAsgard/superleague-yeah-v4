@@ -25,9 +25,8 @@ async function heartbeat(env, status, message) {
 async function runBackup(env) {
   try {
     // 1. Pull D1 dump from sly-api
-    const tok = env.MIGRATION_TOKEN || 'SLY_MIGRATION_2026_04_25';
     const dumpRes = await fetch('https://sly-api.luckdragon.io/api/_admin/d1-dump', {
-      headers: { 'Authorization': 'Bearer ' + tok }
+      headers: { 'X-Pin': env.PADDY_PIN || '' }
     });
     if (!dumpRes.ok) {
       const err = await dumpRes.text();
