@@ -1,7 +1,19 @@
 // sly-autopick-cron — runs every 15 min, finds rounds locking soon, auto-picks for opted-in coaches
+async function heartbeat(env, status, message) {
+  try {
+    const tok = env.MIGRATION_TOKEN || 'SLY_MIGRATION_2026_04_25';
+    await fetch('https://sly-api.luckdragon.io/api/cron/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ cron_name: 'sly-autopick-cron', status, message })
+    });
+  } catch (e) {}
+}
+
 export default {
   async scheduled(event, env, ctx) {
-    return await runAutoPicks(env);
+    try { const r = await runAutoPicks(env); await heartbeat(env, 'ok', JSON.stringify(r).slice(0, 200)); return r; }
+    catch (e) { await heartbeat(env, 'err', String(e).slice(0, 200)); throw e; }
   },
   async fetch(req, env) {
     return new Response(JSON.stringify(await runAutoPicks(env)), { headers: { 'Content-Type': 'application/json' } });
