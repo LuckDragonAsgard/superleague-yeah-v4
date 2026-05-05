@@ -263,6 +263,23 @@ if(p==='/api/squiggle'&&m==='GET'){
   const data=await sq.json();
   return J(data);
 }
+if(p==='/api/finals/generate'&&m==='POST'){
+  if(!await requireAdmin(req,env,db))return E403();
+  const b=await R(req);const rn=+b.round||+b.round_number;
+  if(![21,22,23,24].includes(rn))return E('round must be 21|22|23|24');
+  // Inline finals generator
+  const ladderTop8=async()=>{const{results}=await db.prepare("SELECT c.id AS coach_id,c.name,SUM(CASE WHEN s.result='W' THEN 1 ELSE 0 END) AS wins,ROUND(AVG(s.points),2) AS avg_pts,SUM(s.points) AS pts_for FROM scores s JOIN coaches c ON c.id=s.coach_id JOIN rounds r ON r.id=s.round_id WHERE r.round_number BETWEEN 1 AND 20 GROUP BY c.id,c.name ORDER BY wins DESC,avg_pts DESC,pts_for DESC").all();return results.slice(0,8)};
+  const matchResult=async(rid,name)=>{const f=await db.prepare("SELECT home_coach_id,away_coach_id FROM sly_fixtures WHERE round_id=? AND match_name=?").bind(rid,name).first();if(!f)return null;const h=await db.prepare("SELECT points FROM scores WHERE round_id=? AND coach_id=?").bind(rid,f.home_coach_id).first();const a=await db.prepare("SELECT points FROM scores WHERE round_id=? AND coach_id=?").bind(rid,f.away_coach_id).first();if(!h||!a||h.points==null||a.points==null)return null;return h.points>=a.points?{winner:f.home_coach_id,loser:f.away_coach_id}:{winner:f.away_coach_id,loser:f.home_coach_id}};
+  const ridOf=async(rn)=>{const r=await db.prepare("SELECT id FROM rounds WHERE round_number=?").bind(rn).first();return r?r.id:null};
+  const writeFixtures=async(rid,rn,fix)=>{await db.prepare("DELETE FROM sly_fixtures WHERE round_id=?").bind(rid).run();for(const f of fix)await db.prepare("INSERT INTO sly_fixtures (round_id,round_number,home_coach_id,away_coach_id,match_name) VALUES (?,?,?,?,?)").bind(rid,rn,f.home,f.away,f.name).run()};
+  let result;
+  if(rn===21){const{results:incomplete}=await db.prepare("SELECT round_number FROM rounds WHERE round_number BETWEEN 1 AND 20 AND is_complete=0").all();if(incomplete.length)return E('Cannot generate R21 — '+incomplete.length+' regular-season rounds not complete: '+incomplete.map(r=>'R'+r.round_number).join(','),409);const t=await ladderTop8();if(t.length<8)return E('only '+t.length+' in top 8 — R1-R20 may not be complete',409);const[s1,s2,s3,s4,s5,s6,s7,s8]=t;const fix=[{name:'1st qualifying final',home:s1.coach_id,away:s4.coach_id},{name:'2nd qualifying final',home:s2.coach_id,away:s3.coach_id},{name:'3rd qualifying final',home:s5.coach_id,away:s8.coach_id},{name:'4th qualifying final',home:s6.coach_id,away:s7.coach_id}];const rid=await ridOf(21);await writeFixtures(rid,21,fix);result={round:21,fixtures:fix,seeds:t.map(c=>c.name)}}
+  else if(rn===22){const r21=await ridOf(21);const qf1=await matchResult(r21,'1st qualifying final');const qf2=await matchResult(r21,'2nd qualifying final');const ef1=await matchResult(r21,'3rd qualifying final');const ef2=await matchResult(r21,'4th qualifying final');if(!qf1||!qf2||!ef1||!ef2)return E('R21 not complete or fixtures missing',409);const fix=[{name:'1st semi final',home:qf1.loser,away:ef1.winner},{name:'2nd semi final',home:qf2.loser,away:ef2.winner}];const rid=await ridOf(22);await writeFixtures(rid,22,fix);result={round:22,fixtures:fix}}
+  else if(rn===23){const r21=await ridOf(21);const r22=await ridOf(22);const qf1=await matchResult(r21,'1st qualifying final');const qf2=await matchResult(r21,'2nd qualifying final');const sf1=await matchResult(r22,'1st semi final');const sf2=await matchResult(r22,'2nd semi final');if(!qf1||!qf2||!sf1||!sf2)return E('R21/R22 not complete',409);const fix=[{name:'1st preliminary final',home:qf1.winner,away:sf2.winner},{name:'2nd preliminary final',home:qf2.winner,away:sf1.winner}];const rid=await ridOf(23);await writeFixtures(rid,23,fix);result={round:23,fixtures:fix}}
+  else if(rn===24){const r23=await ridOf(23);const pf1=await matchResult(r23,'1st preliminary final');const pf2=await matchResult(r23,'2nd preliminary final');if(!pf1||!pf2)return E('R23 not complete',409);const fix=[{name:'Grand final',home:pf1.winner,away:pf2.winner}];const rid=await ridOf(24);await writeFixtures(rid,24,fix);result={round:24,fixtures:fix}}
+  return J({ok:true,...result})
+}
+
 return E('Not found',404)
 }catch(e){return E(e.message||String(e),500)}
 }};

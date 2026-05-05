@@ -219,12 +219,35 @@ def check_score_drift():
         ok(f"score drift: R{','.join(str(r) for r in HISTORICAL_TRUTH)} match scraped truth")
 
 
+
+def check_finals_readiness():
+    """Verify finals fixtures are populated when their feeder round is complete."""
+    try:
+        s, b = http_get(f"{API}/api/rounds")
+        rounds = json.loads(b)
+        completed = {r['round_number'] for r in rounds if r.get('is_complete')}
+        # Each finals round should have fixtures iff the previous round is complete
+        finals_chain = [(20, 21, 4), (21, 22, 2), (22, 23, 2), (23, 24, 1)]
+        for feeder, target, expected_count in finals_chain:
+            if feeder in completed:
+                # target round should have fixtures
+                s2, b2 = http_get(f"{API}/api/sly-fixtures?round={target}")
+                got = len(json.loads(b2))
+                if got == expected_count: ok(f"finals: R{target} ({expected_count} fixtures) ready after R{feeder} complete")
+                elif got == 0: fail(f"finals: R{feeder} complete but R{target} has 0 fixtures (run /api/finals/generate)")
+                else: warn(f"finals: R{target} expected {expected_count} fixtures, got {got}")
+        if not any(f in completed for f, _, _ in finals_chain):
+            ok("finals: regular season not finished — finals not yet due")
+    except Exception as e:
+        fail(f"finals_readiness: {e}")
+
+
 # ---- Run all ----
 def main():
     print("\n=== SLY post-deploy checks ===\n")
     for fn in [check_version_coherence, check_bindings, check_crons,
                check_auth_gates, check_patch_effects, check_jumper_health,
-               check_data_health, check_score_drift]:
+               check_data_health, check_score_drift, check_finals_readiness]:
         try: fn()
         except Exception as e: fail(f"{fn.__name__}: {e}")
     fails = sum(1 for s,_ in results if s=="❌")
