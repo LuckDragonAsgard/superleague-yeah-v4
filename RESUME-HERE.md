@@ -1,8 +1,15 @@
 # SLY Fantasy AFL — RESUME HERE
 
-**Last updated:** 2026-05-04  
-**App version:** sly-app v5.23  
-**Status:** ✅ Production — all 15 tabs verified clean, R8 final, R9 open. Rules tab + every-player tracker live.
+**Last updated:** 2026-05-05  
+**App version:** sly-app v5.24 (SPA bytes unchanged today; backend hardened)
+**Status:** ✅ Production — all tabs clean, R8 final + scored, R9 wired and open. R9 locks **Thu 7 May 2026 08:30 UTC**. Today's hardening sweep added 6 backend batches — see "2026-05-05 hardening sweep" section below.
+
+**For a fresh chat / fresh Claude account to fully resume from here, read in order:**
+1. This file (live snapshot)
+2. https://falkor.luckdragon.io/profile.md (portfolio brief, auto-fetched)
+3. https://raw.githubusercontent.com/LuckDragonAsgard/asgard-workers/main/FALKOR_HANDOVER.md (cross-project state)
+4. Falkor brain memories (semantic): query `https://falkor-brain.luckdragon.io/recall` with `q="sly"`
+5. Latest D1 backup: `LuckDragonAsgard/asgard-workers/sly-backups/sly-YYYY-MM-DD.json` (snapshot of all 12 tables)
 
 ---
 
@@ -106,6 +113,33 @@ Verify after every deploy: `GET /client/v4/accounts/{id}/workers/scripts/{name}/
 | D1, D2 | disposals |
 
 Stats source: `match_player_stats` table on the old site's Supabase (publicly readable, anon key in cron). R1-R8 were backfilled from old-site totals (D1 picks were stale — rolled-over migration values, not actual lockout-time picks). Cron now refuses to overwrite `is_complete=1` rounds without `?allow_overwrite_complete=1`. R9+ scoring uses the new app's pick data, which is correct.
+
+**2026-05-05 hardening sweep — 6 batches deployed (backend only, no SPA changes):**
+
+| Batch | What | Where to look |
+|---|---|---|
+| 1 | `Cache-Control: no-cache, must-revalidate` on `/api/rounds` + `/api/scores`. CORS Allow-Origin locked from `*` to allowlist (`superleague.streamlinewebapps.com`, `sly-api.luckdragon.io`, `localhost:3000`, `localhost:8788`). `Vary: Origin`. `sly-checks.py MUTATION_ENDPOINTS` extended with the 5 PATCH paths gated below. | `sly-api.js` line 1 + `/api/rounds` handler |
+| 2 | New `cron_runs` table + `POST /api/cron/heartbeat` (admin) + `GET /api/cron/last-runs` (public). All 4 crons emit a heartbeat at end of each run. Stale detection: score>120s, autopick>1200s. | `cron_runs` table; `/api/cron/*` handlers |
+| 3 | `POST /api/coaches/forgot-pin` (Resend email reset, 30min token) + `POST /api/coaches/reset-pin` (consume + new pin). Constant-time response prevents email enumeration. **Coaches must have email column populated for it to fire — currently 0/16 do.** | `pin_reset_tokens` table; sly-api.js |
+| 4 | HMAC-SHA256 signed session tokens via `SLY_SESSION_SECRET`. Login returns `session_token` valid 7 days. `requireCoachAuth` accepts EITHER `X-Coach-Id` + `X-Coach-Pin` (legacy) OR `Authorization: Bearer <token>`. | sly-api.js: `signSession`, `verifySession` |
+| 5 | PIN hashing: new `pin_hash` column. HMAC-SHA256(SLY_SESSION_SECRET, pin) hex-encoded. **All 16 coaches have pin_hash populated** (via one-shot `POST /api/_admin/migrate-pins`). Login + pin-change + reset all verify hash with plaintext fallback during transition. Drop `pin` column when ready. | sly-api.js: `hashPin`, `verifyPin` |
+| 6 | Daily D1 backup. New worker `sly-backup-cron`, schedule `0 16 * * *` (~2am AEST). Calls `GET /api/_admin/d1-dump` (admin) → JSON of all 12 tables → committed to `LuckDragonAsgard/asgard-workers/sly-backups/sly-YYYY-MM-DD.json` (~700KB). First snapshot: `sly-2026-05-05.json`. | `sly-backup-cron.js`; sly-backups/ folder |
+
+**5 PATCH endpoints gated 2026-05-05 (had been unauthenticated):**
+- `PATCH /api/coaches/:id` → `requireCoachAuth(self)` OR `requireAdmin`
+- `PATCH /api/players/:id` → `requireAdmin`
+- `PATCH /api/payments/:id` → `requireAdmin`
+- `PATCH /api/trades/:id` → `requireAdmin`
+- `PATCH /api/sly-fixtures/:id` → `requireAdmin`
+
+**New secrets on sly-api worker:** `SLY_SESSION_SECRET`, `RESEND_API_KEY` (in addition to original 5 + D1 binding).
+
+**Data normalization 2026-05-05:**
+- 11 players `position='MID'` → `'MIDFIELDER'` (canonical, matches scoring formula).
+- 11 players AFL short-codes (WCE/NM/PA/CARL/FRE/HAW/MELB/RICH/WB) → full club names. 18 distinct teams now.
+- Injury `Samuel Cumming` `player_id=null` → patched to UUID `e99b8dfb-a199-4e90-887a-8aafc1ccc1ed`.
+- Seeded `auto_pick_enabled=1` config row (was missing).
+- Cleaned 1 sentinel score (id=1510) + 15 R0 orphan picks. **0 orphans across all FK boundaries.**
 
 **Auth (v5.23):** Per-coach mutations require `X-Coach-Id` + `X-Coach-Pin` headers. SPA injects them from sessionStorage after login. Admin endpoints require coach.id===1 OR `Authorization: Bearer ${MIGRATION_TOKEN}` (used by sly-autopick-cron). 6 previously open holes now gated. See `sly-checks.py`.
 
