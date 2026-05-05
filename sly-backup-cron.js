@@ -13,10 +13,9 @@ export default {
 
 async function heartbeat(env, status, message) {
   try {
-    const tok = env.MIGRATION_TOKEN || 'SLY_MIGRATION_2026_04_25';
     await fetch('https://sly-api.luckdragon.io/api/cron/heartbeat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      headers: { 'Content-Type': 'application/json', 'X-Pin': env.PADDY_PIN || '' },
       body: JSON.stringify({ cron_name: 'sly-backup-cron', status, message })
     });
   } catch (e) {}
