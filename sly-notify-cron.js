@@ -131,8 +131,21 @@ async function runPostLockRollover(db, webhookUrl) {
   return { ok: true, action: 'post_lock_rollover', round: round.name, rolled: result.rolled.length };
 }
 
+async function heartbeatToApi(env, status, message) {
+  try {
+    const tok = env.MIGRATION_TOKEN || 'SLY_MIGRATION_2026_04_25';
+    await fetch('https://sly-api.luckdragon.io/api/cron/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ cron_name: 'sly-notify-cron', status, message })
+    });
+  } catch (e) {}
+}
+
 export default {
   async scheduled(event, env, ctx) {
+    ctx.waitUntil(heartbeatToApi(env, 'ok', `cron fired at ${new Date().toISOString()}`));
+
     const db = env.DB;
     const webhookUrl = env.DISCORD_WEBHOOK;
     if (!db || !webhookUrl) return;
